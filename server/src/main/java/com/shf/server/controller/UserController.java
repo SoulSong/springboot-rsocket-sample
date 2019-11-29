@@ -25,6 +25,9 @@ import lombok.extern.slf4j.Slf4j;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
+import static com.shf.mimetype.MimeTypes.REFRESH_TOKEN_MIME_TYPE;
+import static com.shf.mimetype.MimeTypes.SECURITY_TOKEN_MIME_TYPE;
+
 /**
  * Description:
  *
@@ -195,6 +198,28 @@ public class UserController {
     Mono<Void> onConnect1(RSocketRequester rSocketRequester, @Payload String clientId, @Header(value = "connect-metadata") List<String> metadatas) {
         log.info("Specific ConnectMapping. Client_id:{}. metadata: {}", clientId, metadatas.toArray(new String[0]));
         return Mono.empty();
+    }
+
+    /***********************************Demo Server Requester******************************/
+    /**
+     * @param rSocketRequester The requester for the connection associated with the request, to make requests to the remote end.
+     *                         Here is used for requesting to the client side.
+     * @param securityToken    metadata named securityToken
+     * @param refreshToken     metadata named refreshToken
+     * @param userRequest      request data
+     * @return String
+     */
+    @MessageMapping("requester.responder")
+    public Mono<String> requestCallback(RSocketRequester rSocketRequester,
+                                        @Header String securityToken,
+                                        @Header String refreshToken,
+                                        UserRequest userRequest) {
+        log.info("Your(" + userRepository.getOne(userRequest.getId()).block().getName() + ") securityToken is '" + securityToken + "' and refreshToken is '" + refreshToken + "'");
+        return rSocketRequester.route("responder.user")
+                .data(User.builder().id(1).age(12).name("coco").build())
+                .metadata(securityToken, SECURITY_TOKEN_MIME_TYPE)
+                .metadata(refreshToken, REFRESH_TOKEN_MIME_TYPE)
+                .retrieveMono(String.class);
     }
 
 

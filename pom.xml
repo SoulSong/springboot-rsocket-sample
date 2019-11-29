@@ -23,6 +23,7 @@
         <module>server</module>
         <module>client</module>
         <module>pingpong</module>
+        <module>client2</module>
     </modules>
 
     <properties>
