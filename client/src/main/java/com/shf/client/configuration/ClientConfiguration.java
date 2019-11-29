@@ -179,6 +179,8 @@ public class ClientConfiguration {
                     // Setting header(metadata) for @ConnectMapping
                     .setupMetadata(Arrays.asList("connect-metadata-values", "connect-metadata-values2"), MimeTypeUtils.APPLICATION_JSON)
                     .connect(TcpClientTransport.create(new InetSocketAddress("127.0.0.1", 7000)))
+                    .retry(5)
+                    .cache()
                     .block();
         }
     }
