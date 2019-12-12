@@ -22,11 +22,28 @@ It enables the following symmetric interaction models via async message passing 
 All interaction models defined in **RSocket**.
  
 # Architecture 
- 
+![avatar](./doc/img/request-track.jpg)
 
 # Key Feature
+- Four interaction models, handled with `@MessageMapping`
+    - request/response (stream of 1)
+    - request/stream (finite stream of many)
+    - fire-and-forget (no response)
+    - channel (bi-directional streams)
+- Resume enhance
+- RSocketStrategiesCustomizer enhance
+- Metadata handle with `@Header` and `@Headers`
+    - register different `MimeType` and `Class` by `metadataExtractorRegistry`
+- Handle the placeholder in a destination template string
+    - `@DestinationVariable`
+- Handle the connection level payload included data and metadata with `@ConnectMapping`
+    - match all connects
+    - match the specific routes
+- Switch the requester as a clientResponder by two different ways
+    - see more in [ClientConfiguration](./client/src/main/java/com/shf/client/configuration/ClientConfiguration.java)
+- Expose two ports in the same server for a webFlux server and a rSocket server
+    - see more in [ClientApplication](./client/src/main/java/com/shf/client/ClientApplication.java)
 
- 
 # Test
 See more details in the `server` and `client` modules.
 
