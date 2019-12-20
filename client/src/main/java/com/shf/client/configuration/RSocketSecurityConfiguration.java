@@ -4,10 +4,12 @@ import org.springframework.boot.rsocket.messaging.RSocketStrategiesCustomizer;
 import org.springframework.boot.rsocket.server.ServerRSocketFactoryProcessor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.security.authentication.UserDetailsRepositoryReactiveAuthenticationManager;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.rsocket.EnableRSocketSecurity;
 import org.springframework.security.config.annotation.rsocket.RSocketSecurity;
 import org.springframework.security.core.userdetails.MapReactiveUserDetailsService;
+import org.springframework.security.core.userdetails.ReactiveUserDetailsService;
 import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.rsocket.core.PayloadSocketAcceptorInterceptor;
@@ -23,9 +25,10 @@ import org.springframework.security.rsocket.metadata.BasicAuthenticationDecoder;
 @EnableRSocketSecurity
 public class RSocketSecurityConfiguration {
     /**
-     * See default configuration in {@code SecuritySocketAcceptorInterceptorConfiguration}
+     * See default configuration in {@code org.springframework.security.config.annotation.rsocket.SecuritySocketAcceptorInterceptorConfiguration}
      *
-     * @param rSocket rSocket
+     * @param rSocket {@link RSocketSecurity} is register in {@code org.springframework.security.config.annotation.rsocket.RSocketSecurityConfiguration}.
+     *                It is a stateful instance.
      * @return PayloadSocketAcceptorInterceptor
      */
     @Bean
@@ -56,7 +59,9 @@ public class RSocketSecurityConfiguration {
     }
 
     /**
-     * Define 3 users for testing.
+     * Define three users for testing.
+     * {@link MapReactiveUserDetailsService} is the default {@link ReactiveUserDetailsService}, it is autowired in {@link UserDetailsRepositoryReactiveAuthenticationManager}.
+     * We could implement {@link ReactiveUserDetailsService} to customize another {@link ReactiveUserDetailsService}, such as `JdbcReactiveUserDetailsService`
      *
      * @return MapReactiveUserDetailsService
      */
