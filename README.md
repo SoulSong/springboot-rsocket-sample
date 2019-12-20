@@ -43,20 +43,23 @@ All interaction models defined in **RSocket**.
     - see more in [ClientConfiguration](./client/src/main/java/com/shf/client/configuration/ClientConfiguration.java)
 - Expose two ports in the same server for a webFlux server and a rSocket server
     - see more in [ClientApplication](./client/src/main/java/com/shf/client/ClientApplication.java)
+- Integrate with spring-security for `basic authentication` and `authorization`
+    - see more in [RSocketSecurityConfiguration](./client/src/main/java/com/shf/client/configuration/RSocketSecurityConfiguration.java)
 
-# Test
-See more details in the `server` and `client` modules.
+# Test Endpoints
 
-## Request/Response 
+## Four interaction models
+
+### Request/Response 
 > curl http://localhost:8080/user/1
 
-## Request/Stream
+### Request/Stream
 > curl http://localhost:8080/user/
 
-## Fire And Forget
+### Fire And Forget
 > curl http://localhost:8080/user/add
 
-## Request/Channel
+### Request/Channel
 > curl http://localhost:8080/user/request/channel
 
 ``
