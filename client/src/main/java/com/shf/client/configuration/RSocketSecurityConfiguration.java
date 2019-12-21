@@ -41,6 +41,7 @@ public class RSocketSecurityConfiguration {
                     .route("user.*").hasRole("ADMIN")
                     // any other request must be authenticated
                     .anyRequest().authenticated()
+                    // payloads that have no metadata have no authorization rules.
                     .anyExchange().permitAll();
         }).basicAuthentication(Customizer.withDefaults());
         return rSocket.build();

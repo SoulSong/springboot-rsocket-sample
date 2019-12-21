@@ -1,18 +1,22 @@
 package com.shf.client.controller;
 
-import com.shf.entity.User;
-
+import org.reactivestreams.Subscriber;
+import org.reactivestreams.Subscription;
 import org.springframework.messaging.handler.annotation.DestinationVariable;
 import org.springframework.messaging.handler.annotation.Header;
 import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.handler.annotation.Payload;
 import org.springframework.messaging.rsocket.RSocketRequester;
 import org.springframework.messaging.rsocket.annotation.ConnectMapping;
+import org.springframework.security.core.context.ReactiveSecurityContextHolder;
+import org.springframework.security.core.context.SecurityContext;
+import org.springframework.security.core.userdetails.User;
 import org.springframework.stereotype.Controller;
 
 import java.util.List;
 
 import lombok.extern.slf4j.Slf4j;
+import reactor.core.CoreSubscriber;
 import reactor.core.publisher.Mono;
 
 /**
@@ -28,8 +32,15 @@ public class UserController {
 
     /***********************************request/response******************************/
     @MessageMapping("user.{id}")
-    public Mono<User> user(@DestinationVariable int id) {
-        return Mono.just(User.builder().id(id).age(11).name("john").build());
+    public Mono<com.shf.entity.User> user(@DestinationVariable int id) {
+        return ReactiveSecurityContextHolder
+                .getContext()
+                .map(SecurityContext::getAuthentication)
+                .map(au -> (User) au.getPrincipal())
+                .map(User::getUsername).map(username -> {
+                    log.info("Current user is {}", username);
+                    return com.shf.entity.User.builder().id(id).age(11).name("john").build();
+                });
     }
 
     /***********************************ConnectMapping******************************/
