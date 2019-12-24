@@ -1,4 +1,4 @@
-package com.shf.client.server.log;
+package com.shf.client.server.log.interceptor;
 
 import com.shf.client.server.log.converter.DefaultPayloadExchangeLogInfoConverter;
 import com.shf.client.server.log.converter.PayloadExchangeLogInfoConverter;
@@ -10,6 +10,8 @@ import org.springframework.security.rsocket.api.PayloadExchange;
 import org.springframework.security.rsocket.api.PayloadInterceptor;
 import org.springframework.security.rsocket.api.PayloadInterceptorChain;
 import org.springframework.security.rsocket.authentication.AuthenticationPayloadInterceptor;
+import org.springframework.security.rsocket.core.PayloadSocketAcceptorInterceptor;
+import org.springframework.util.Assert;
 
 import java.util.Map;
 
@@ -18,7 +20,9 @@ import reactor.core.publisher.Mono;
 
 /**
  * Description:
- * Refer to {@link AuthenticationPayloadInterceptor}
+ * Customized a {@link PayloadInterceptor} for logging request.
+ * It refers to {@link AuthenticationPayloadInterceptor}.
+ * Finally it will be wried into {@link PayloadSocketAcceptorInterceptor}
  *
  * @author songhaifeng
  * @date 2019/12/21 21:38
@@ -27,9 +31,10 @@ import reactor.core.publisher.Mono;
 public class DefaultRequestLogPayloadInterceptor implements PayloadInterceptor, Ordered {
 
     private PayloadExchangeLogInfoConverter converter;
-    private int order = 1;
+    private int order = Integer.MIN_VALUE;
 
     public DefaultRequestLogPayloadInterceptor(RSocketStrategies rSocketStrategies) {
+        Assert.notNull(rSocketStrategies, "RSocketStrategies must not be mull.");
         this.converter = new DefaultPayloadExchangeLogInfoConverter(rSocketStrategies);
     }
 
@@ -42,18 +47,22 @@ public class DefaultRequestLogPayloadInterceptor implements PayloadInterceptor, 
         return order;
     }
 
+    /**
+     * log payload
+     */
     @Override
     public Mono<Void> intercept(PayloadExchange exchange, PayloadInterceptorChain chain) {
-        return converter.convert(exchange)
-                .switchIfEmpty(Mono.just(new RequestLogInfo())).map(requestLogInfo -> {
+        return Mono.fromCallable(() -> converter.convert(exchange))
+                .switchIfEmpty(chain.next(exchange).then(Mono.empty()))
+                .map(requestLogInfo -> {
+                    log.info(">>>>>>>>>>>>>>>>Log Request>>>>>>>>>>>>>>>>>>>");
                     log.info("Current request payload data : {}", requestLogInfo.getData());
                     Map<String, Object> metadata = requestLogInfo.getMetadata();
                     if (MapUtils.isNotEmpty(metadata)) {
-                        log.info("Current request payload metadata : {}", metadata.size());
-                        metadata.forEach((key, value) -> {
-                            log.info("key : {} >>>> value : {}", key, value);
-                        });
+                        log.info("Current request payload contains {} metadata", metadata.size());
+                        metadata.forEach((key, value) -> log.info("key : {} >>>> value : {}", key, value));
                     }
+                    log.info(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>");
                     return Mono.empty();
                 }).then(chain.next(exchange));
     }

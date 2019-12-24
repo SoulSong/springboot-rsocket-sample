@@ -18,13 +18,17 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
 import org.springframework.context.annotation.Scope;
+import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.core.annotation.AnnotatedElementUtils;
+import org.springframework.lang.Nullable;
 import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.rsocket.RSocketRequester;
 import org.springframework.messaging.rsocket.RSocketStrategies;
 import org.springframework.messaging.rsocket.annotation.ConnectMapping;
 import org.springframework.messaging.rsocket.annotation.support.RSocketMessageHandler;
+import org.springframework.util.MimeType;
 import org.springframework.util.MimeTypeUtils;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.util.pattern.PathPatternRouteMatcher;
 
 import java.net.InetSocketAddress;
@@ -32,11 +36,18 @@ import java.time.Duration;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.function.Predicate;
 
+import javax.validation.constraints.NotNull;
+
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import reactor.core.publisher.Flux;
 
+import static com.shf.mimetype.MimeTypes.MAP_MIME_TYPE;
 import static com.shf.mimetype.MimeTypes.REFRESH_TOKEN_MIME_TYPE;
 import static com.shf.mimetype.MimeTypes.SECURITY_TOKEN_MIME_TYPE;
 
@@ -44,12 +55,23 @@ import static com.shf.mimetype.MimeTypes.SECURITY_TOKEN_MIME_TYPE;
  * Description:
  * Client side configuration.
  *
- * @author: songhaifeng
- * @date: 2019/11/18 11:26
+ * @author songhaifeng
+ * @date 2019/11/18 11:26
  */
 @Configuration
 @Slf4j
 public class RSocketConfiguration {
+
+    /**
+     * Collect all metadata extracts which defines a name
+     */
+    public static final List<MetadataToExtractRef> METADATA_TO_EXTRACT_REF_LIST = Arrays.asList(
+            new MetadataToExtractRef(MimeTypeUtils.APPLICATION_JSON, List.class, null, "connect-metadata"),
+            new MetadataToExtractRef(SECURITY_TOKEN_MIME_TYPE, String.class, null, "securityToken"),
+            new MetadataToExtractRef(REFRESH_TOKEN_MIME_TYPE, String.class, null, "refreshToken"),
+            new MetadataToExtractRef(MAP_MIME_TYPE, null, new ParameterizedTypeReference<Map<String, Object>>() {
+            }, "properties")
+    );
 
     @Configuration
     static class CommonRequesterConfiguration {
@@ -137,9 +159,14 @@ public class RSocketConfiguration {
                         // Already set as the default routeMatcher in {@Code RSocketStrategiesAutoConfiguration#rSocketStrategies}
                         .routeMatcher(new PathPatternRouteMatcher())
                         .metadataExtractorRegistry(register -> {
-                            register.metadataToExtract(MimeTypeUtils.APPLICATION_JSON, List.class, "connect-metadata");
-                            register.metadataToExtract(SECURITY_TOKEN_MIME_TYPE, String.class, "securityToken");
-                            register.metadataToExtract(REFRESH_TOKEN_MIME_TYPE, String.class, "refreshToken");
+                            // register all metadata extracts
+                            METADATA_TO_EXTRACT_REF_LIST.forEach(metadataToExtractRef -> {
+                                if (null != metadataToExtractRef.targetType) {
+                                    register.metadataToExtract(metadataToExtractRef.mimeType, metadataToExtractRef.targetType, metadataToExtractRef.name);
+                                } else if (null != metadataToExtractRef.parameterizedTypeReference) {
+                                    register.metadataToExtract(metadataToExtractRef.mimeType, metadataToExtractRef.parameterizedTypeReference, metadataToExtractRef.name);
+                                }
+                            });
                         });
             };
         }
@@ -244,6 +271,21 @@ public class RSocketConfiguration {
             handler.setRSocketStrategies(strategies);
             return handler;
         }
+
     }
 
+    /**
+     * Define a metadata-extract must have a name.
+     */
+    @Data
+    @AllArgsConstructor
+    @Validated
+    public static class MetadataToExtractRef {
+        @NotNull
+        private MimeType mimeType;
+        private Class<?> targetType;
+        private ParameterizedTypeReference<?> parameterizedTypeReference;
+        @NotNull
+        private String name;
+    }
 }

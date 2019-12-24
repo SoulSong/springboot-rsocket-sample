@@ -35,6 +35,7 @@ public class RSocketClientConfiguration {
                 .setupData("Client2-abc")
                 // could send multiple metadata in a setup frame.
                 .setupMetadata(Arrays.asList("connect-metadata-value", "connect-metadata-value2"), MimeTypeUtils.APPLICATION_JSON)
+                // Authentication metadata
                 .setupMetadata(credentials, UsernamePasswordMetadata.BASIC_AUTHENTICATION_MIME_TYPE)
                 .connect(TcpClientTransport.create(new InetSocketAddress("127.0.0.1", 8081)))
                 .block();

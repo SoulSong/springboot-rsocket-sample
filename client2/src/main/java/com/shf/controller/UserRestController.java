@@ -1,5 +1,6 @@
 package com.shf.controller;
 
+import com.shf.entity.Foo;
 import com.shf.entity.User;
 
 import org.reactivestreams.Publisher;
@@ -10,6 +11,11 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+
+import java.util.HashMap;
+import java.util.Map;
+
+import static com.shf.mimetype.MimeTypes.MAP_MIME_TYPE;
 
 /**
  * Description:
@@ -29,12 +35,25 @@ public class UserRestController {
     }
 
     /***********************************request/response ******************************/
+    /**
+     * Test for
+     * - customized payloadInterceptor for logging request in server side
+     * - authentication by username and password
+     *
+     * @param id id for user
+     * @return User
+     */
     @GetMapping(value = "{id}")
     public Publisher<User> user(@PathVariable("id") int id) {
         UsernamePasswordMetadata credentials = new UsernamePasswordMetadata("shf", "123456");
+        Map<String, Object> properties = new HashMap<>(2);
+        properties.put("property_1", "value_1");
+        properties.put("property_2", Foo.builder().name("a").build());
         return rSocketRequester
                 .route("user." + id)
+                .data(User.builder().age(100).name("宋海锋").id(12).build())
                 .metadata(credentials, UsernamePasswordMetadata.BASIC_AUTHENTICATION_MIME_TYPE)
+                .metadata(properties, MAP_MIME_TYPE)
                 .retrieveMono(User.class);
     }
 
@@ -49,6 +68,7 @@ public class UserRestController {
         UsernamePasswordMetadata credentials = new UsernamePasswordMetadata("shf_2", "123456");
         return rSocketRequester
                 .route("user.2")
+                .data(User.builder().age(100).name("user_123").id(12).build())
                 .metadata(credentials, UsernamePasswordMetadata.BASIC_AUTHENTICATION_MIME_TYPE)
                 .retrieveMono(User.class);
     }
@@ -63,6 +83,7 @@ public class UserRestController {
         UsernamePasswordMetadata credentials = new UsernamePasswordMetadata("shf_2", "111111");
         return rSocketRequester
                 .route("user.3")
+                .data(User.builder().age(100).name("user_123").id(12).build())
                 .metadata(credentials, UsernamePasswordMetadata.BASIC_AUTHENTICATION_MIME_TYPE)
                 .retrieveMono(User.class);
     }
