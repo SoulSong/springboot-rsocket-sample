@@ -25,7 +25,7 @@ import lombok.extern.slf4j.Slf4j;
  */
 @Configuration
 @Slf4j
-public class ClientConfiguration {
+public class RSocketClientConfiguration {
 
     @Bean
     public RSocketRequester rSocketRequester(RSocketRequester.Builder builder) {

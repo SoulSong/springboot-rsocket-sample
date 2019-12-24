@@ -24,11 +24,11 @@ import static com.shf.mimetype.MimeTypes.SECURITY_TOKEN_MIME_TYPE;
  * Description:
  * Server side configuration.
  *
- * @author: songhaifeng
- * @date: 2019/11/20 18:06
+ * @author songhaifeng
+ * @date 2019/11/20 18:06
  */
 @Configuration
-public class ServerConfiguration {
+public class RSocketServerConfiguration {
 
     /**
      * Add a {@link RSocketStrategiesCustomizer} to registry metadataExtractMimeType.

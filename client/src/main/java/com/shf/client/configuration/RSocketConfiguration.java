@@ -49,7 +49,7 @@ import static com.shf.mimetype.MimeTypes.SECURITY_TOKEN_MIME_TYPE;
  */
 @Configuration
 @Slf4j
-public class ClientConfiguration {
+public class RSocketConfiguration {
 
     @Configuration
     static class CommonRequesterConfiguration {
