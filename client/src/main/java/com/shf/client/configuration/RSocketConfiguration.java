@@ -2,8 +2,13 @@ package com.shf.client.configuration;
 
 import com.shf.client.responder.annotation.RSocketClientResponder2;
 import com.shf.client.responder.controller.Requester1ResponderController;
+import com.shf.lease.LeaseReceiver;
+import com.shf.lease.LeaseSender;
+import com.shf.lease.NoopStats;
+import com.shf.lease.ServerRoleEnum;
 
 import io.rsocket.frame.decoder.PayloadDecoder;
+import io.rsocket.lease.Leases;
 import io.rsocket.metadata.WellKnownMimeType;
 import io.rsocket.resume.ClientResume;
 import io.rsocket.resume.PeriodicResumeStrategy;
@@ -14,13 +19,13 @@ import org.reactivestreams.Publisher;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.autoconfigure.rsocket.RSocketMessagingAutoConfiguration;
 import org.springframework.boot.rsocket.messaging.RSocketStrategiesCustomizer;
+import org.springframework.boot.rsocket.server.ServerRSocketFactoryProcessor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
 import org.springframework.context.annotation.Scope;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.core.annotation.AnnotatedElementUtils;
-import org.springframework.lang.Nullable;
 import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.rsocket.RSocketRequester;
 import org.springframework.messaging.rsocket.RSocketStrategies;
@@ -43,7 +48,6 @@ import javax.validation.constraints.NotNull;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;
-import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import reactor.core.publisher.Flux;
 
@@ -272,6 +276,26 @@ public class RSocketConfiguration {
             return handler;
         }
 
+        /**
+         * A ServerRSocketFactoryCustomizer to add the emission
+         * (and retrieval) of leases to (and from) clients.
+         * Leases can be used to limit the number of accepted clients
+         * on server side. This will keep the server responsive for
+         * more, distinct clients, and keeps it from being overwhelmed
+         * with requests.
+         *
+         * @return ServerRSocketFactoryProcessor
+         */
+        @Bean
+        ServerRSocketFactoryProcessor resumeServerFactoryCustomizer() {
+            return (factory) -> factory.lease(() ->
+                    Leases.<NoopStats>create()
+                            // receive the lease from the server side.
+                            .receiver(new LeaseReceiver(ServerRoleEnum.SERVER))
+                            // issue 5 leases to each client, the timeToLiveMillis is 7s.
+                            .sender(new LeaseSender(ServerRoleEnum.SERVER, 70_000, 5))
+            );
+        }
     }
 
     /**

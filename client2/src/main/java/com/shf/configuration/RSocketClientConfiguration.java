@@ -1,5 +1,11 @@
 package com.shf.configuration;
 
+import com.shf.lease.LeaseReceiver;
+import com.shf.lease.LeaseSender;
+import com.shf.lease.NoopStats;
+import com.shf.lease.ServerRoleEnum;
+
+import io.rsocket.lease.Leases;
 import io.rsocket.transport.netty.client.TcpClientTransport;
 
 import org.springframework.boot.rsocket.messaging.RSocketStrategiesCustomizer;
@@ -19,6 +25,8 @@ import lombok.extern.slf4j.Slf4j;
  * Description:
  * Client side configuration.
  * - Integrated with spring-security for authentication and authorization.
+ * - Enable lease： Client side check itself whether has valid leases.
+ *   If has no, it will invoke exception inside and never send the request to the server side.
  *
  * @author songhaifeng
  * @date 2019/11/18 11:26
@@ -32,6 +40,13 @@ public class RSocketClientConfiguration {
         // Test `setup().hasRole("SETUP")` which is configured on the server side.
         final UsernamePasswordMetadata credentials = new UsernamePasswordMetadata("setup", "654321");
         return builder
+                .rsocketFactory(configurer ->
+                        configurer.lease(() ->
+                                Leases.<NoopStats>create()
+                                        .receiver(new LeaseReceiver(ServerRoleEnum.CLIENT))
+                                        .sender(new LeaseSender(ServerRoleEnum.CLIENT, 30_000, 5))
+                        )
+                )
                 .setupData("Client2-abc")
                 // could send multiple metadata in a setup frame.
                 .setupMetadata(Arrays.asList("connect-metadata-value", "connect-metadata-value2"), MimeTypeUtils.APPLICATION_JSON)
