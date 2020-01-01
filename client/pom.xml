@@ -15,7 +15,7 @@
     <dependencies>
         <dependency>
             <groupId>com.shf</groupId>
-            <artifactId>model</artifactId>
+            <artifactId>common</artifactId>
         </dependency>
 
         <dependency>

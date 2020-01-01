@@ -19,7 +19,7 @@
     <url>http://www.example.com</url>
 
     <modules>
-        <module>model</module>
+        <module>common</module>
         <module>server</module>
         <module>client</module>
         <module>pingpong</module>
@@ -68,7 +68,7 @@
 
             <dependency>
                 <groupId>com.shf</groupId>
-                <artifactId>model</artifactId>
+                <artifactId>common</artifactId>
                 <version>${version}</version>
             </dependency>
 
