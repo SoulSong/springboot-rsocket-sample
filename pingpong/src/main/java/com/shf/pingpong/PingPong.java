@@ -1,15 +1,15 @@
 package com.shf.pingpong;
 
-import io.rsocket.AbstractRSocket;
 import io.rsocket.ConnectionSetupPayload;
 import io.rsocket.Payload;
 import io.rsocket.RSocket;
-import io.rsocket.RSocketFactory;
 import io.rsocket.SocketAcceptor;
+import io.rsocket.core.RSocketConnector;
+import io.rsocket.core.RSocketServer;
 import io.rsocket.transport.netty.client.TcpClientTransport;
 import io.rsocket.transport.netty.server.TcpServerTransport;
 import io.rsocket.util.DefaultPayload;
-
+import lombok.extern.slf4j.Slf4j;
 import org.reactivestreams.Publisher;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
@@ -17,12 +17,10 @@ import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.ApplicationListener;
 import org.springframework.core.Ordered;
 import org.springframework.stereotype.Component;
-
-import java.time.Duration;
-
-import lombok.extern.slf4j.Slf4j;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+
+import java.time.Duration;
 
 /**
  * Description:
@@ -60,11 +58,8 @@ class Ping implements ApplicationListener<ApplicationReadyEvent>, Ordered {
 
         log.info("starting " + this.getClass().getName());
 
-        Mono<RSocket> start = RSocketFactory
-                //  indicates the current client will connect to server.
-                .connect()
-                .transport(TcpClientTransport.create(7000))
-                .start();
+        Mono<RSocket> start = RSocketConnector.create()
+                .connect(TcpClientTransport.create(7000));
 
         start.flatMapMany(socket ->
                 // send a requestChannel type request, it's the bi-directional streams mode.
@@ -93,15 +88,10 @@ class Pong implements SocketAcceptor, Ordered, ApplicationListener<ApplicationRe
 
     @Override
     public void onApplicationEvent(ApplicationReadyEvent applicationReadyEvent) {
-
-        RSocketFactory
-                // receive the request from client
-                .receive()
-                // defines how to process the request, it accept a SocketAcceptor class
+        RSocketServer.create()
                 .acceptor(this)
-                .transport(TcpServerTransport.create(7000))
-                .start()
-                .subscribe();
+                .bind(TcpServerTransport.create(7000))
+                .block();
     }
 
     @Override
@@ -112,7 +102,7 @@ class Pong implements SocketAcceptor, Ordered, ApplicationListener<ApplicationRe
     @Override
     public Mono<RSocket> accept(ConnectionSetupPayload connectionSetupPayload, RSocket rSocket) {
 
-        AbstractRSocket rs = new AbstractRSocket() {
+        RSocket rs = new RSocket() {
             @Override
             public Flux<Payload> requestChannel(Publisher<Payload> payloads) {
                 return Flux

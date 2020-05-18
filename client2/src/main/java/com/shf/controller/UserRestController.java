@@ -51,9 +51,9 @@ public class UserRestController {
         properties.put("property_2", Foo.builder().name("a").build());
         return rSocketRequester
                 .route("user." + id)
-                .data(User.builder().age(100).name("宋海锋").id(12).build())
                 .metadata(credentials, UsernamePasswordMetadata.BASIC_AUTHENTICATION_MIME_TYPE)
                 .metadata(properties, MAP_MIME_TYPE)
+                .data(User.builder().age(100).name("宋海锋").id(12).build())
                 .retrieveMono(User.class);
     }
 
@@ -68,8 +68,8 @@ public class UserRestController {
         UsernamePasswordMetadata credentials = new UsernamePasswordMetadata("shf_2", "123456");
         return rSocketRequester
                 .route("user.2")
-                .data(User.builder().age(100).name("user_123").id(12).build())
                 .metadata(credentials, UsernamePasswordMetadata.BASIC_AUTHENTICATION_MIME_TYPE)
+                .data(User.builder().age(100).name("user_123").id(12).build())
                 .retrieveMono(User.class);
     }
 
@@ -83,8 +83,8 @@ public class UserRestController {
         UsernamePasswordMetadata credentials = new UsernamePasswordMetadata("shf_2", "111111");
         return rSocketRequester
                 .route("user.3")
-                .data(User.builder().age(100).name("user_123").id(12).build())
                 .metadata(credentials, UsernamePasswordMetadata.BASIC_AUTHENTICATION_MIME_TYPE)
+                .data(User.builder().age(100).name("user_123").id(12).build())
                 .retrieveMono(User.class);
     }
 }

@@ -20,11 +20,9 @@ import reactor.core.publisher.Mono;
 @Slf4j
 public class Requester1ResponderController {
 
-    @MessageMapping("responder.user")
-    public Mono<String> respondToServer(User user,
-                                        @Header String securityToken,
-                                        @Header String refreshToken) {
-        log.info("Responder1 --> user_name:[{}] securityToken:[{}] refreshToken:[{}]", user.getName(), securityToken, refreshToken);
+    @MessageMapping("client.responder.user")
+    public Mono<String> respondToServer(User user, @Header String securityToken) {
+        log.info("ClientResponder1 --> receive payload:[{}] ,header:[securityToken:{}]", user.toString(), securityToken);
         return Mono.just(user.getName());
     }
 }

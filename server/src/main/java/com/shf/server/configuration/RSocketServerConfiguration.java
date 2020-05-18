@@ -2,13 +2,16 @@ package com.shf.server.configuration;
 
 import com.shf.entity.Foo;
 
+import io.rsocket.core.Resume;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.rsocket.RSocketStrategiesAutoConfiguration;
 import org.springframework.boot.rsocket.messaging.RSocketStrategiesCustomizer;
-import org.springframework.boot.rsocket.server.ServerRSocketFactoryProcessor;
+import org.springframework.boot.rsocket.server.RSocketServerCustomizer;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.util.MimeTypeUtils;
+import reactor.util.retry.Retry;
 
 import java.time.Duration;
 import java.util.List;
@@ -28,6 +31,7 @@ import static com.shf.mimetype.MimeTypes.SECURITY_TOKEN_MIME_TYPE;
  * @date 2019/11/20 18:06
  */
 @Configuration
+@Slf4j
 public class RSocketServerConfiguration {
 
     /**
@@ -72,15 +76,21 @@ public class RSocketServerConfiguration {
     }
 
     /**
-     * Add resume ability for ServerRSocketFactory
+     * Add resume ability for RSocketServer
      *
-     * @return ServerRSocketFactoryProcessor
+     * @return RSocketServerCustomizer
      */
     @Bean
-    ServerRSocketFactoryProcessor resumeServerFactoryCustomizer() {
-        return (factory) -> factory.resume()
-                .resumeStreamTimeout(Duration.ofSeconds(30))
-                .resumeSessionDuration(Duration.ofSeconds(5));
+    RSocketServerCustomizer resumeServerCustomizer() {
+        return (rSocketServer) -> rSocketServer.resume(
+                new Resume()
+                        .streamTimeout(Duration.ofSeconds(60))
+                        .sessionDuration(Duration.ofMinutes(5))
+                        .retry(
+                                Retry.fixedDelay(Long.MAX_VALUE, Duration.ofSeconds(5))
+                                        .doBeforeRetry(s -> log.warn("Client disconnected. Trying to resume connection..."))
+                        )
+        );
     }
 
 }

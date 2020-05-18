@@ -12,7 +12,7 @@ import java.lang.annotation.Target;
 
 /**
  * Description:
- * Used for {@link RSocketRequester} named rSocketRequester2.
+ * Used for {@link RSocketRequester} named rSocketRequester1.
  *
  * @author: songhaifeng
  * @date: 2019/11/29 01:50

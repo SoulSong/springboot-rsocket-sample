@@ -7,7 +7,6 @@
         <groupId>com.shf</groupId>
         <artifactId>springboot-rsocket-sample</artifactId>
         <version>1.0-SNAPSHOT</version>
-        <relativePath/> <!-- lookup parent from repository -->
     </parent>
     <groupId>com.shf</groupId>
     <artifactId>server</artifactId>
@@ -33,5 +32,13 @@
         </dependency>
     </dependencies>
 
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-maven-plugin</artifactId>
+            </plugin>
+        </plugins>
+    </build>
 
 </project>

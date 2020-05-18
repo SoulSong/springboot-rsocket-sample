@@ -25,7 +25,6 @@ import lombok.extern.slf4j.Slf4j;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
-import static com.shf.mimetype.MimeTypes.REFRESH_TOKEN_MIME_TYPE;
 import static com.shf.mimetype.MimeTypes.SECURITY_TOKEN_MIME_TYPE;
 
 /**
@@ -98,7 +97,9 @@ public class UserController {
      */
     @MessageMapping("send.string.header")
     public Mono<String> sendStringHeader(@Header String securityToken, @Header String refreshToken, UserRequest userRequest) {
-        return Mono.just("Your(" + userRepository.getOne(userRequest.getId()).block().getName() + ") securityToken is '" + securityToken + "' and refreshToken is '" + refreshToken + "'");
+        return userRepository.getOne(userRequest.getId()).map(user ->
+                "Your(" + user.getName() + ") securityToken is '" + securityToken + "' and refreshToken is '" + refreshToken + "'"
+        );
     }
 
     /**
@@ -166,23 +167,34 @@ public class UserController {
      * @return Must return void or Mono<Void>
      */
     @ConnectMapping
-    Mono<Void> allConnect(RSocketRequester rSocketRequester, @Payload String clientId, @Header(value = "connect-metadata") List<String> metadatas) {
+    Mono<Void> allConnect(RSocketRequester rSocketRequester,
+                          @Payload String clientId,
+                          @Header(value = "connect-metadata") List<String> metadatas) {
         log.info("Default ConnectMapping, match all connect.Client_id: {} . metadata: {}", clientId, metadatas.toArray(new String[0]));
         rSocketRequester.rsocket()
                 // Invoke when the RSocket is closed.
                 // A {@code RSocket} can be closed by explicitly calling {@link RSocket#dispose()}
                 // or when the underlying transport connection is closed.
                 .onClose()
-                .subscribe(null, null,
-                        () -> REQUESTER_MAP.remove(clientId, rSocketRequester));
-        // clientID authentication for security
-        // mock case：Client999 will be rejected.
-        if ("Client999".equalsIgnoreCase(clientId)) {
-            log.warn("Reject client({}), disconnect.", clientId);
-            rSocketRequester.rsocket().dispose();
-        } else {
-            REQUESTER_MAP.put(clientId, rSocketRequester);
-        }
+                .doFirst(() -> {
+                    log.info("Client: {} CONNECTED.", clientId);
+                    // clientID authentication for security
+                    // mock case：Client999 will be rejected.
+                    if ("Client999".equalsIgnoreCase(clientId)) {
+                        log.warn("Reject client({}), disconnect.", clientId);
+                        rSocketRequester.rsocket().dispose();
+                    } else {
+                        REQUESTER_MAP.put(clientId, rSocketRequester);
+                    }
+                })
+                .doOnError(error -> {
+                    log.warn("Channel to client {} CLOSED", clientId);
+                })
+                .doFinally(consumer -> {
+                    REQUESTER_MAP.remove(clientId, rSocketRequester);
+                    log.info("Client {} DISCONNECTED", clientId);
+                })
+                .subscribe();
         return Mono.empty();
     }
 
@@ -195,8 +207,11 @@ public class UserController {
      * @return Must return void or Mono<Void>
      */
     @ConnectMapping("specific.route.1.2")
-    Mono<Void> onConnect1(RSocketRequester rSocketRequester, @Payload String clientId, @Header(value = "connect-metadata") List<String> metadatas) {
+    Mono<Void> onConnect1(RSocketRequester rSocketRequester,
+                          @Payload String clientId,
+                          @Header(value = "connect-metadata") List<String> metadatas) {
         log.info("Specific ConnectMapping. Client_id:{}. metadata: {}", clientId, metadatas.toArray(new String[0]));
+        log.info("Client: {} CONNECTED.", clientId);
         return Mono.empty();
     }
 
@@ -205,21 +220,20 @@ public class UserController {
      * @param rSocketRequester The requester for the connection associated with the request, to make requests to the remote end.
      *                         Here is used for requesting to the client side.
      * @param securityToken    metadata named securityToken
-     * @param refreshToken     metadata named refreshToken
      * @param userRequest      request data
      * @return String
      */
     @MessageMapping("requester.responder")
     public Mono<String> requestCallback(RSocketRequester rSocketRequester,
                                         @Header String securityToken,
-                                        @Header String refreshToken,
                                         UserRequest userRequest) {
-        log.info("Your(" + userRepository.getOne(userRequest.getId()).block().getName() + ") securityToken is '" + securityToken + "' and refreshToken is '" + refreshToken + "'");
-        return rSocketRequester.route("responder.user")
-                .data(User.builder().id(1).age(12).name("coco").build())
-                .metadata(securityToken, SECURITY_TOKEN_MIME_TYPE)
-                .metadata(refreshToken, REFRESH_TOKEN_MIME_TYPE)
-                .retrieveMono(String.class);
+        return userRepository.getOne(userRequest.getId()).flatMap(user -> {
+            log.info("Your(" + user.getName() + ") securityToken is '" + securityToken + "'");
+            return rSocketRequester.route("client.responder.user")
+                    .metadata(securityToken, SECURITY_TOKEN_MIME_TYPE)
+                    .data(User.builder().id(1).age(12).name("coco").build())
+                    .retrieveMono(String.class);
+        });
     }
 
 

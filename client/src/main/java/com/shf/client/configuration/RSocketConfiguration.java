@@ -6,20 +6,17 @@ import com.shf.lease.LeaseReceiver;
 import com.shf.lease.LeaseSender;
 import com.shf.lease.NoopStats;
 import com.shf.lease.ServerRoleEnum;
-
-import io.rsocket.frame.decoder.PayloadDecoder;
+import io.rsocket.core.Resume;
 import io.rsocket.lease.Leases;
 import io.rsocket.metadata.WellKnownMimeType;
-import io.rsocket.resume.ClientResume;
-import io.rsocket.resume.PeriodicResumeStrategy;
-import io.rsocket.resume.ResumeStrategy;
 import io.rsocket.transport.netty.client.TcpClientTransport;
-
-import org.reactivestreams.Publisher;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.autoconfigure.rsocket.RSocketMessagingAutoConfiguration;
 import org.springframework.boot.rsocket.messaging.RSocketStrategiesCustomizer;
-import org.springframework.boot.rsocket.server.ServerRSocketFactoryProcessor;
+import org.springframework.boot.rsocket.server.RSocketServerCustomizer;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
@@ -35,6 +32,8 @@ import org.springframework.util.MimeType;
 import org.springframework.util.MimeTypeUtils;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.util.pattern.PathPatternRouteMatcher;
+import reactor.util.annotation.NonNull;
+import reactor.util.retry.Retry;
 
 import java.net.InetSocketAddress;
 import java.time.Duration;
@@ -43,13 +42,6 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Predicate;
-
-import javax.validation.constraints.NotNull;
-
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.extern.slf4j.Slf4j;
-import reactor.core.publisher.Flux;
 
 import static com.shf.mimetype.MimeTypes.MAP_MIME_TYPE;
 import static com.shf.mimetype.MimeTypes.REFRESH_TOKEN_MIME_TYPE;
@@ -124,31 +116,17 @@ public class RSocketConfiguration {
                     .metadataMimeType(MimeTypeUtils.parseMimeType(WellKnownMimeType.MESSAGE_RSOCKET_COMPOSITE_METADATA.getString()))
                     .dataMimeType(MimeTypeUtils.APPLICATION_JSON)
                     .rsocketStrategies(strategies)
-                    .rsocketFactory(rSocketFactory ->
-                            // Resumption is designed for loss of connectivity and assumes client and server state is maintained across connectivity loss
-                            // So if restart server or client, it will resume failure. In fact, it's not always succeed.
-                            rSocketFactory
-                                    .resume()
-                                    .resumeStrategy(() -> new VerboseResumeStrategy(new PeriodicResumeStrategy(Duration.ofSeconds(5))))
-                                    .resumeStreamTimeout(Duration.ofSeconds(30))
-                                    .frameDecoder(PayloadDecoder.ZERO_COPY));
-        }
-
-        /**
-         * Enhance the resumeStrategy for logging.
-         */
-        private static class VerboseResumeStrategy implements ResumeStrategy {
-            private final ResumeStrategy resumeStrategy;
-
-            VerboseResumeStrategy(ResumeStrategy resumeStrategy) {
-                this.resumeStrategy = resumeStrategy;
-            }
-
-            @Override
-            public Publisher<?> apply(ClientResume clientResume, Throwable throwable) {
-                return Flux.from(resumeStrategy.apply(clientResume, throwable))
-                        .doOnNext(v -> log.warn("Disconnected. Trying to resume connection..."));
-            }
+                    .rsocketConnector(rSocketConnector ->
+                            rSocketConnector
+                                    .resume(new Resume()
+                                            .sessionDuration(Duration.ofMinutes(5))
+                                            .streamTimeout(Duration.ofSeconds(60))
+                                            .retry(
+                                                    Retry.fixedDelay(Long.MAX_VALUE, Duration.ofSeconds(5))
+                                                            .doBeforeRetry(s -> log.warn("Server disconnected. Trying to resume connection..."))
+                                            )
+                                    )
+                    );
         }
 
         /**
@@ -188,7 +166,7 @@ public class RSocketConfiguration {
      * set the specific {@link Requester1ResponderController} for handling requests.
      */
     @Configuration
-    static class Request1Configuration {
+    static class Requester1Configuration {
         /**
          * Create a {@link RSocketRequester} for interacting with the RSocket server.
          * It will return a DefaultRSocketRequesterBuilder object by the method {@code DefaultRSocketRequesterBuilder#doConnect}.
@@ -203,7 +181,9 @@ public class RSocketConfiguration {
             return builder
                     // requester and responder come in pairs. When any requester needs to responded, it need to config the specific handlers.
                     // Here suggest to create a new {@Code RSocketMessageHandler} instance. The default {@code RSocketMessageHandler} instance used as a server not a responder.
-                    .rsocketFactory(RSocketMessageHandler.clientResponder(rSocketStrategies, requester1ResponderController))
+                    .rsocketConnector(rSocketConnector ->
+                            rSocketConnector.acceptor(RSocketMessageHandler.responder(rSocketStrategies, requester1ResponderController))
+                    )
                     // Link {@Code DefaultRSocketRequesterBuilder#getSetupPayload} and {@Code RSocketFactory.ClientRSocketFactory.StartClient#start}.
                     // Setting payload(@Payload) for @ConnectMapping
                     .setupData("Client-123")
@@ -221,7 +201,7 @@ public class RSocketConfiguration {
      * Here via setting {@link RSocketMessageHandler#setHandlerPredicate(Predicate)} to specify the handlers which annotated by {@link RSocketClientResponder2}.
      */
     @Configuration
-    static class Request2Configuration {
+    static class Requester2Configuration {
 
         @Bean("handler4Requester2")
         public RSocketMessageHandler handler4Requester2(RSocketStrategies strategies) {
@@ -240,8 +220,8 @@ public class RSocketConfiguration {
         @Bean("rSocketRequester2")
         public RSocketRequester rSocketRequester2(RSocketRequester.Builder builder, @Qualifier("handler4Requester2") RSocketMessageHandler rSocketMessageHandler) {
             return builder
-                    .rsocketFactory(rSocketFactory -> {
-                        rSocketFactory.acceptor(rSocketMessageHandler.responder());
+                    .rsocketConnector(rSocketConnector -> {
+                        rSocketConnector.acceptor(rSocketMessageHandler.responder());
                     })
                     .setupData("Client-234")
                     .setupMetadata(Collections.singleton("another-metadata-values"), MimeTypeUtils.APPLICATION_JSON)
@@ -254,6 +234,25 @@ public class RSocketConfiguration {
 
 
     }
+
+    @Configuration
+    static class Requester3Configuration {
+        /**
+         * Create another {@link RSocketRequester} for testing reject client which clientId is 'Client999'.
+         *
+         * @param builder RSocketRequester.Builder
+         * @return RSocketRequester
+         */
+        @Bean("rSocketRequester3")
+        public RSocketRequester rSocketRequester3(RSocketRequester.Builder builder) {
+            return builder
+                    .setupData("Client999")
+                    .setupMetadata(Collections.singleton("another-metadata-values"), MimeTypeUtils.APPLICATION_JSON)
+                    .connect(TcpClientTransport.create(new InetSocketAddress("127.0.0.1", 7000)))
+                    .block();
+        }
+    }
+
 
     /**
      * If this client is also act as a server. Need to create a new {@link RSocketMessageHandler} instance
@@ -277,18 +276,17 @@ public class RSocketConfiguration {
         }
 
         /**
-         * A ServerRSocketFactoryCustomizer to add the emission
-         * (and retrieval) of leases to (and from) clients.
-         * Leases can be used to limit the number of accepted clients
-         * on server side. This will keep the server responsive for
-         * more, distinct clients, and keeps it from being overwhelmed
-         * with requests.
+         * A ServerRSocketFactoryCustomizer to add the emission (and retrieval) of leases to (and from) clients.
+         * Leases can be used to limit the number of accepted clients on server side. This will keep the server responsive for
+         * more, distinct clients, and keeps it from being overwhelmed with requests.
+         * <p>
+         * since  boot2.2.7 or rSocket1.0.0, ServerRSocketFactoryProcessor is Deprecated.instead to use {@link RSocketServerCustomizer}
          *
-         * @return ServerRSocketFactoryProcessor
+         * @return RSocketServerCustomizer
          */
         @Bean
-        ServerRSocketFactoryProcessor resumeServerFactoryCustomizer() {
-            return (factory) -> factory.lease(() ->
+        RSocketServerCustomizer leaseCustomizer() {
+            return rSocketServer -> rSocketServer.lease(() ->
                     Leases.<NoopStats>create()
                             // receive the lease from the server side.
                             .receiver(new LeaseReceiver(ServerRoleEnum.SERVER))
@@ -305,11 +303,11 @@ public class RSocketConfiguration {
     @AllArgsConstructor
     @Validated
     public static class MetadataToExtractRef {
-        @NotNull
+        @NonNull
         private MimeType mimeType;
         private Class<?> targetType;
         private ParameterizedTypeReference<?> parameterizedTypeReference;
-        @NotNull
+        @NonNull
         private String name;
     }
 }

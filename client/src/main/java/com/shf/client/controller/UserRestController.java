@@ -141,9 +141,9 @@ public class UserRestController {
         final String refreshToken = "refresh_token_001";
         return rSocketRequester1
                 .route("send.string.header")
-                .data(new UserRequest(1))
                 .metadata(securityToken, SECURITY_TOKEN_MIME_TYPE)
                 .metadata(refreshToken, REFRESH_TOKEN_MIME_TYPE)
+                .data(new UserRequest(1))
                 .retrieveMono(String.class);
     }
 
@@ -218,25 +218,19 @@ public class UserRestController {
     /***********************************Test Responder******************************/
     @GetMapping(value = "requester1/responder")
     public Publisher<String> replayRequester1() {
-        final String securityToken = "bearer token_001";
-        final String refreshToken = "refresh_token_001";
         return rSocketRequester1
                 .route("requester.responder")
+                .metadata("bearer token_001", SECURITY_TOKEN_MIME_TYPE)
                 .data(new UserRequest(1))
-                .metadata(securityToken, SECURITY_TOKEN_MIME_TYPE)
-                .metadata(refreshToken, REFRESH_TOKEN_MIME_TYPE)
                 .retrieveMono(String.class);
     }
 
     @GetMapping(value = "requester2/responder")
     public Publisher<String> replayRequester2() {
-        final String securityToken = "bearer token_002";
-        final String refreshToken = "refresh_token_002";
         return rSocketRequester2
                 .route("requester.responder")
+                .metadata("bearer token_002", SECURITY_TOKEN_MIME_TYPE)
                 .data(new UserRequest(2))
-                .metadata(securityToken, SECURITY_TOKEN_MIME_TYPE)
-                .metadata(refreshToken, REFRESH_TOKEN_MIME_TYPE)
                 .retrieveMono(String.class);
     }
 

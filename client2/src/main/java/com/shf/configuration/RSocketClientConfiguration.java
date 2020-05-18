@@ -26,7 +26,7 @@ import lombok.extern.slf4j.Slf4j;
  * Client side configuration.
  * - Integrated with spring-security for authentication and authorization.
  * - Enable lease： Client side check itself whether has valid leases.
- *   If has no, it will invoke exception inside and never send the request to the server side.
+ * If has no, it will invoke exception inside and never send the request to the server side.
  *
  * @author songhaifeng
  * @date 2019/11/18 11:26
@@ -40,8 +40,8 @@ public class RSocketClientConfiguration {
         // Test `setup().hasRole("SETUP")` which is configured on the server side.
         final UsernamePasswordMetadata credentials = new UsernamePasswordMetadata("setup", "654321");
         return builder
-                .rsocketFactory(configurer ->
-                        configurer.lease(() ->
+                .rsocketConnector(rSocketConnector ->
+                        rSocketConnector.lease(() ->
                                 Leases.<NoopStats>create()
                                         .receiver(new LeaseReceiver(ServerRoleEnum.CLIENT))
                                         .sender(new LeaseSender(ServerRoleEnum.CLIENT, 30_000, 5))
