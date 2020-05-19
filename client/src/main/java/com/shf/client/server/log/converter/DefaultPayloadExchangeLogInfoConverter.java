@@ -2,15 +2,21 @@ package com.shf.client.server.log.converter;
 
 import com.shf.client.server.log.RequestLogInfo;
 
+import io.netty.buffer.ByteBuf;
+import io.netty.buffer.ByteBufAllocator;
 import io.netty.buffer.ByteBufUtil;
 import io.netty.util.CharsetUtil;
 import io.rsocket.Payload;
+import io.rsocket.metadata.AuthMetadataCodec;
 import io.rsocket.metadata.WellKnownMimeType;
 
+import io.rsocket.metadata.security.AuthMetadataFlyweight;
 import org.springframework.core.codec.Decoder;
 import org.springframework.messaging.rsocket.DefaultMetadataExtractor;
 import org.springframework.messaging.rsocket.MetadataExtractor;
 import org.springframework.messaging.rsocket.RSocketStrategies;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.rsocket.api.PayloadExchange;
 import org.springframework.security.rsocket.authentication.BasicAuthenticationPayloadExchangeConverter;
 import org.springframework.security.rsocket.authentication.BearerPayloadExchangeConverter;
@@ -19,7 +25,9 @@ import org.springframework.util.Assert;
 import org.springframework.util.MimeType;
 import org.springframework.util.MimeTypeUtils;
 
+import java.nio.charset.StandardCharsets;
 import java.util.List;
+import java.util.Map;
 
 import static com.shf.client.configuration.RSocketConfiguration.METADATA_TO_EXTRACT_REF_LIST;
 
@@ -52,7 +60,8 @@ public class DefaultPayloadExchangeLogInfoConverter implements PayloadExchangeLo
 
         builder.data(new String(ByteBufUtil.getBytes(payload.data().slice()), CharsetUtil.UTF_8));
         if (payload.hasMetadata()) {
-            builder.metadata(metadataExtractor.extract(payload, metadataMimetype));
+            Map<String, Object> metadata = metadataExtractor.extract(payload, metadataMimetype);
+            builder.metadata(metadata);
         }
         return builder.build();
     }
@@ -75,10 +84,18 @@ public class DefaultPayloadExchangeLogInfoConverter implements PayloadExchangeLo
                 metadataExtractor.metadataToExtract(metadataToExtractRef.getMimeType(), metadataToExtractRef.getParameterizedTypeReference(), metadataToExtractRef.getName());
             }
         });
-        // Register basic_authentication_mimeType
-        metadataExtractor.metadataToExtract(UsernamePasswordMetadata.BASIC_AUTHENTICATION_MIME_TYPE, UsernamePasswordMetadata.class, (String) null);
+        // Register simple_authentication_mimeType
+        // {@code AuthenticationPayloadExchangeConverter} and {@code SimpleAuthenticationSpec#build}
+        metadataExtractor.metadataToExtract(MimeTypeUtils.parseMimeType(WellKnownMimeType.MESSAGE_RSOCKET_AUTHENTICATION.getString()), byte[].class, "authentication");
 
         return metadataExtractor;
     }
 
+    private Authentication simple(ByteBuf rawAuthentication) {
+        ByteBuf rawUsername = AuthMetadataFlyweight.decodeUsername(rawAuthentication);
+        String username = rawUsername.toString(StandardCharsets.UTF_8);
+        ByteBuf rawPassword = AuthMetadataFlyweight.decodePassword(rawAuthentication);
+        String password = rawPassword.toString(StandardCharsets.UTF_8);
+        return new UsernamePasswordAuthenticationToken(username, password);
+    }
 }

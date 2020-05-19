@@ -3,7 +3,6 @@ package com.shf.client.configuration;
 import com.shf.client.server.log.interceptor.DefaultRequestLogPayloadInterceptor;
 
 import org.springframework.boot.autoconfigure.security.rsocket.RSocketSecurityAutoConfiguration;
-import org.springframework.boot.rsocket.messaging.RSocketStrategiesCustomizer;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.messaging.rsocket.RSocketStrategies;
@@ -15,7 +14,6 @@ import org.springframework.security.core.userdetails.ReactiveUserDetailsService;
 import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.rsocket.core.PayloadSocketAcceptorInterceptor;
-import org.springframework.security.rsocket.metadata.BasicAuthenticationDecoder;
 
 /**
  * Description:
@@ -46,22 +44,10 @@ public class RSocketSecurityConfiguration {
                     .anyRequest().authenticated()
                     // payloads that have no metadata have no authorization rules.
                     .anyExchange().permitAll();
-        }).basicAuthentication(Customizer.withDefaults())
+        }).simpleAuthentication(Customizer.withDefaults())
                 // Add customized payload interceptor for logging request
                 .addPayloadInterceptor(new DefaultRequestLogPayloadInterceptor(rSocketStrategies));
         return rSocket.build();
-    }
-
-    /**
-     * Add basic authentication decoder on the server side
-     *
-     * @return RSocketStrategiesCustomizer
-     */
-    @Bean
-    public RSocketStrategiesCustomizer authenticationStrategyCustomizer() {
-        return (strategyBuilder) -> {
-            strategyBuilder.decoder(new BasicAuthenticationDecoder());
-        };
     }
 
     /**

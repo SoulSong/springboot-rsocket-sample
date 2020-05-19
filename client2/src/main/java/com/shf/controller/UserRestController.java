@@ -3,10 +3,12 @@ package com.shf.controller;
 import com.shf.entity.Foo;
 import com.shf.entity.User;
 
+import io.rsocket.metadata.WellKnownMimeType;
 import org.reactivestreams.Publisher;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.messaging.rsocket.RSocketRequester;
 import org.springframework.security.rsocket.metadata.UsernamePasswordMetadata;
+import org.springframework.util.MimeTypeUtils;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -51,7 +53,7 @@ public class UserRestController {
         properties.put("property_2", Foo.builder().name("a").build());
         return rSocketRequester
                 .route("user." + id)
-                .metadata(credentials, UsernamePasswordMetadata.BASIC_AUTHENTICATION_MIME_TYPE)
+                .metadata(credentials, MimeTypeUtils.parseMimeType(WellKnownMimeType.MESSAGE_RSOCKET_AUTHENTICATION.getString()))
                 .metadata(properties, MAP_MIME_TYPE)
                 .data(User.builder().age(100).name("宋海锋").id(12).build())
                 .retrieveMono(User.class);
@@ -68,7 +70,7 @@ public class UserRestController {
         UsernamePasswordMetadata credentials = new UsernamePasswordMetadata("shf_2", "123456");
         return rSocketRequester
                 .route("user.2")
-                .metadata(credentials, UsernamePasswordMetadata.BASIC_AUTHENTICATION_MIME_TYPE)
+                .metadata(credentials, MimeTypeUtils.parseMimeType(WellKnownMimeType.MESSAGE_RSOCKET_AUTHENTICATION.getString()))
                 .data(User.builder().age(100).name("user_123").id(12).build())
                 .retrieveMono(User.class);
     }
@@ -83,7 +85,7 @@ public class UserRestController {
         UsernamePasswordMetadata credentials = new UsernamePasswordMetadata("shf_2", "111111");
         return rSocketRequester
                 .route("user.3")
-                .metadata(credentials, UsernamePasswordMetadata.BASIC_AUTHENTICATION_MIME_TYPE)
+                .metadata(credentials, MimeTypeUtils.parseMimeType(WellKnownMimeType.MESSAGE_RSOCKET_AUTHENTICATION.getString()))
                 .data(User.builder().age(100).name("user_123").id(12).build())
                 .retrieveMono(User.class);
     }

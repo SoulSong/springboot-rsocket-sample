@@ -47,6 +47,8 @@ All interaction models defined in **RSocket**.
     - see more in [ClientApplication](./client/src/main/java/com/shf/client/ClientApplication.java)
 - Integrate with spring-security for `basic authentication` and `authorization`
     - see more in [RSocketSecurityConfiguration](./client/src/main/java/com/shf/client/configuration/RSocketSecurityConfiguration.java)
+- Graceful shutdown
+
 
 # Test Endpoints
 
@@ -159,10 +161,40 @@ io.rsocket.exceptions.ApplicationErrorException: Access Denied
 
 ### user mot match
 ```text
-$  curl http://localhost:8000/user/user_not_authentication
+$ curl http://localhost:8000/user/user_not_authentication
 {"timestamp":"2020-05-18T17:17:59.872+00:00","path":"/user/user_not_authentication","status":500,"error":"Internal Server Error","message":"","requestId":"4f1da4bc-6"}
 ```
 logging from the `client2` console:
 ```text
 io.rsocket.exceptions.ApplicationErrorException: Invalid Credentials
 ```
+
+
+## Graceful shutdown
+Since boot2.3.0, it supports graceful shutdown. First, config as folllows:
+```text
+# graceful shutdown setting
+server.shutdown=graceful
+spring.lifecycle.timeout-per-shutdown-phase=20s
+# shutdown endpoint
+management.endpoints.web.exposure.include=health,info,shutdown
+management.endpoint.shutdown.enabled=true
+```
+Second, mocked an endpoint `/slow/handler` for test, it sleep 10s for test waiting. Last,
+quick send three requests in turn for checking:
+- Request a slow endpoint
+```text
+$ curl http://127.0.0.1:8080/user/slow/handler
+```
+
+- Shutdown `client-service` immediately
+```text
+$ curl -X POST "http://localhost:8080/actuator/shutdown"
+```
+
+-  Request a slow endpoint immediately
+```text
+$ curl http://127.0.0.1:8080/user/slow/handler
+```
+We will find that, the first request could be answered normally. The third request will be refused. The `client-service` real shutdown gracefully.
+

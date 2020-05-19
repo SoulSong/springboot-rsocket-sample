@@ -21,7 +21,7 @@ public class WebSecurityConfiguration {
                 .authorizeExchange(exchange ->
                         exchange
                                 .anyExchange().permitAll()
-                );
+                ).csrf().disable();
         return http.build();
     }
 

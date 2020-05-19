@@ -6,6 +6,7 @@ import com.shf.entity.Foo;
 import com.shf.entity.User;
 import com.shf.entity.UserRequest;
 
+import lombok.extern.slf4j.Slf4j;
 import org.reactivestreams.Publisher;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -38,6 +39,7 @@ import static com.shf.mimetype.MimeTypes.SECURITY_TOKEN_MIME_TYPE;
  */
 @RestController
 @RequestMapping("/user")
+@Slf4j
 public class UserRestController {
 
     private final RSocketRequester rSocketRequester1;
@@ -240,5 +242,12 @@ public class UserRestController {
         map.put("foo", "bar");
         map.put("fto", Foo.builder().name("car").build());
         return map;
+    }
+
+    @GetMapping(value = "slow/handler")
+    public Publisher<String> slowHandler() throws InterruptedException {
+        log.info("Receive a 'slow/handler' request.");
+        Thread.sleep(10 * 1000);
+        return Mono.justOrEmpty("complete");
     }
 }
