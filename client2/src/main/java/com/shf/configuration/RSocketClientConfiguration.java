@@ -42,7 +42,7 @@ public class RSocketClientConfiguration {
                         rSocketConnector.lease(() ->
                                 Leases.<NoopStats>create()
                                         .receiver(new LeaseReceiver(ServerRoleEnum.CLIENT))
-                                        .sender(new LeaseSender(ServerRoleEnum.CLIENT, 30_000, 5))
+                                        .sender(new LeaseSender(ServerRoleEnum.CLIENT, 3_000, 5))
                         )
                 )
                 .setupData("Client2-abc")
@@ -61,8 +61,6 @@ public class RSocketClientConfiguration {
      */
     @Bean
     public RSocketStrategiesCustomizer authenticationStrategyCustomizer() {
-        return (strategyBuilder) -> {
-            strategyBuilder.encoder(new SimpleAuthenticationEncoder());
-        };
+        return (strategyBuilder) -> strategyBuilder.encoder(new SimpleAuthenticationEncoder());
     }
 }

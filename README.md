@@ -48,7 +48,7 @@ All interaction models defined in **RSocket**.
 - Integrate with spring-security for `basic authentication` and `authorization`
     - see more in [RSocketSecurityConfiguration](./client/src/main/java/com/shf/client/configuration/RSocketSecurityConfiguration.java)
 - Graceful shutdown
-
+- Lease
 
 # Test Endpoints
 

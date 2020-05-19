@@ -32,7 +32,7 @@ public class LeaseSender implements Function<Optional<NoopStats>, Flux<Lease>> {
     @Override
     public Flux<Lease> apply(Optional<NoopStats> leaseStats) {
         log.info("{} : stats are {}", serverRole, leaseStats.isPresent() ? "present" : "absent");
-        // Lease is renewed every 10 seconds.
+        // Lease is renewed every 10 seconds. Suggest the frequency smaller then ttl.
         return Flux.interval(ofSeconds(1), ofSeconds(10))
                 .onBackpressureLatest()
                 .map(tick -> {

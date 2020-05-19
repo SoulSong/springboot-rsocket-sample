@@ -220,9 +220,9 @@ public class RSocketConfiguration {
         @Bean("rSocketRequester2")
         public RSocketRequester rSocketRequester2(RSocketRequester.Builder builder, @Qualifier("handler4Requester2") RSocketMessageHandler rSocketMessageHandler) {
             return builder
-                    .rsocketConnector(rSocketConnector -> {
-                        rSocketConnector.acceptor(rSocketMessageHandler.responder());
-                    })
+                    .rsocketConnector(rSocketConnector ->
+                            rSocketConnector.acceptor(rSocketMessageHandler.responder())
+                    )
                     .setupData("Client-234")
                     .setupMetadata(Collections.singleton("another-metadata-values"), MimeTypeUtils.APPLICATION_JSON)
                     // Mapping @ConnectMapping's route in server side.
@@ -288,10 +288,10 @@ public class RSocketConfiguration {
         RSocketServerCustomizer leaseCustomizer() {
             return rSocketServer -> rSocketServer.lease(() ->
                     Leases.<NoopStats>create()
-                            // receive the lease from the server side.
+                            // receive the lease
                             .receiver(new LeaseReceiver(ServerRoleEnum.SERVER))
-                            // issue 5 leases to each client, the timeToLiveMillis is 7s.
-                            .sender(new LeaseSender(ServerRoleEnum.SERVER, 70_000, 5))
+                            // issue 5 leases to each client, the timeToLiveMillis is 7s. Suggest the ttl bigger then the lease renew frequency .
+                            .sender(new LeaseSender(ServerRoleEnum.SERVER, 7_000, 5))
             );
         }
     }
