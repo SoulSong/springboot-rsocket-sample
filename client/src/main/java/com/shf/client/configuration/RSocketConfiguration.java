@@ -2,11 +2,14 @@ package com.shf.client.configuration;
 
 import com.shf.client.responder.annotation.RSocketClientResponder2;
 import com.shf.client.responder.controller.Requester1ResponderController;
-import com.shf.lease.LeaseReceiver;
-import com.shf.lease.LeaseSender;
-import com.shf.lease.NoopStats;
-import com.shf.lease.ServerRoleEnum;
+import com.shf.rsocket.lease.LeaseReceiver;
+import com.shf.rsocket.lease.LeaseSender;
+import com.shf.rsocket.lease.NoopStats;
+import com.shf.rsocket.lease.ServerRoleEnum;
+import com.shf.rsocket.log.DefaultRequesterLog;
+import com.shf.rsocket.log.DefaultResponderLog;
 import io.rsocket.core.Resume;
+import io.rsocket.frame.decoder.PayloadDecoder;
 import io.rsocket.lease.Leases;
 import io.rsocket.metadata.WellKnownMimeType;
 import io.rsocket.transport.netty.client.TcpClientTransport;
@@ -14,6 +17,7 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.rsocket.RSocketMessagingAutoConfiguration;
 import org.springframework.boot.rsocket.messaging.RSocketStrategiesCustomizer;
 import org.springframework.boot.rsocket.server.RSocketServerCustomizer;
@@ -43,9 +47,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Predicate;
 
-import static com.shf.mimetype.MimeTypes.MAP_MIME_TYPE;
-import static com.shf.mimetype.MimeTypes.REFRESH_TOKEN_MIME_TYPE;
-import static com.shf.mimetype.MimeTypes.SECURITY_TOKEN_MIME_TYPE;
+import static com.shf.rsocket.mimetype.MimeTypes.MAP_MIME_TYPE;
+import static com.shf.rsocket.mimetype.MimeTypes.REFRESH_TOKEN_MIME_TYPE;
+import static com.shf.rsocket.mimetype.MimeTypes.SECURITY_TOKEN_MIME_TYPE;
 
 /**
  * Description:
@@ -57,7 +61,6 @@ import static com.shf.mimetype.MimeTypes.SECURITY_TOKEN_MIME_TYPE;
 @Configuration
 @Slf4j
 public class RSocketConfiguration {
-
     /**
      * Collect all metadata extracts which defines a name
      */
@@ -71,6 +74,8 @@ public class RSocketConfiguration {
 
     @Configuration
     static class CommonRequesterConfiguration {
+        @Value("${spring.application.name}")
+        private String appName;
 
         /**
          * Add resume ability for RSocketRequester. Here we can customize any thing here for our business.
@@ -118,6 +123,7 @@ public class RSocketConfiguration {
                     .rsocketStrategies(strategies)
                     .rsocketConnector(rSocketConnector ->
                             rSocketConnector
+                                    .payloadDecoder(PayloadDecoder.ZERO_COPY)
                                     .resume(new Resume()
                                             .sessionDuration(Duration.ofMinutes(5))
                                             .streamTimeout(Duration.ofSeconds(60))
@@ -126,6 +132,8 @@ public class RSocketConfiguration {
                                                             .doBeforeRetry(s -> log.warn("Server disconnected. Trying to resume connection..."))
                                             )
                                     )
+                                    .interceptors(interceptorRegistry -> interceptorRegistry.forRequester(new DefaultRequesterLog(appName)))
+                                    .interceptors(interceptorRegistry -> interceptorRegistry.forResponder(new DefaultResponderLog(appName)))
                     );
         }
 
@@ -222,6 +230,7 @@ public class RSocketConfiguration {
             return builder
                     .rsocketConnector(rSocketConnector ->
                             rSocketConnector.acceptor(rSocketMessageHandler.responder())
+                                    .payloadDecoder(PayloadDecoder.ZERO_COPY)
                     )
                     .setupData("Client-234")
                     .setupMetadata(Collections.singleton("another-metadata-values"), MimeTypeUtils.APPLICATION_JSON)

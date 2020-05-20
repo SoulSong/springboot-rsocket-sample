@@ -17,7 +17,7 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.HashMap;
 import java.util.Map;
 
-import static com.shf.mimetype.MimeTypes.MAP_MIME_TYPE;
+import static com.shf.rsocket.mimetype.MimeTypes.MAP_MIME_TYPE;
 
 /**
  * Description:

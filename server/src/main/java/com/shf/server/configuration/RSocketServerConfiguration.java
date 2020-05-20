@@ -2,8 +2,12 @@ package com.shf.server.configuration;
 
 import com.shf.entity.Foo;
 
+import com.shf.rsocket.log.DefaultRequesterLog;
+import com.shf.rsocket.log.DefaultResponderLog;
 import io.rsocket.core.Resume;
+import io.rsocket.frame.decoder.PayloadDecoder;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.rsocket.RSocketStrategiesAutoConfiguration;
 import org.springframework.boot.rsocket.messaging.RSocketStrategiesCustomizer;
 import org.springframework.boot.rsocket.server.RSocketServerCustomizer;
@@ -17,11 +21,11 @@ import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 
-import static com.shf.mimetype.MimeTypes.FOO_MIME_TYPE;
-import static com.shf.mimetype.MimeTypes.MAP_MIME_TYPE;
-import static com.shf.mimetype.MimeTypes.PARAMETERIZED_TYPE_MIME_TYPE;
-import static com.shf.mimetype.MimeTypes.REFRESH_TOKEN_MIME_TYPE;
-import static com.shf.mimetype.MimeTypes.SECURITY_TOKEN_MIME_TYPE;
+import static com.shf.rsocket.mimetype.MimeTypes.FOO_MIME_TYPE;
+import static com.shf.rsocket.mimetype.MimeTypes.MAP_MIME_TYPE;
+import static com.shf.rsocket.mimetype.MimeTypes.PARAMETERIZED_TYPE_MIME_TYPE;
+import static com.shf.rsocket.mimetype.MimeTypes.REFRESH_TOKEN_MIME_TYPE;
+import static com.shf.rsocket.mimetype.MimeTypes.SECURITY_TOKEN_MIME_TYPE;
 
 /**
  * Description:
@@ -33,6 +37,8 @@ import static com.shf.mimetype.MimeTypes.SECURITY_TOKEN_MIME_TYPE;
 @Configuration
 @Slf4j
 public class RSocketServerConfiguration {
+    @Value("${spring.application.name}")
+    private String appName;
 
     /**
      * Add a {@link RSocketStrategiesCustomizer} to registry metadataExtractMimeType.
@@ -82,15 +88,18 @@ public class RSocketServerConfiguration {
      */
     @Bean
     RSocketServerCustomizer resumeServerCustomizer() {
-        return (rSocketServer) -> rSocketServer.resume(
-                new Resume()
-                        .streamTimeout(Duration.ofSeconds(60))
-                        .sessionDuration(Duration.ofMinutes(5))
-                        .retry(
-                                Retry.fixedDelay(Long.MAX_VALUE, Duration.ofSeconds(5))
-                                        .doBeforeRetry(s -> log.warn("Client disconnected. Trying to resume connection..."))
-                        )
-        );
+        return (rSocketServer) ->
+                rSocketServer.payloadDecoder(PayloadDecoder.ZERO_COPY)
+                        .interceptors(interceptorRegistry -> interceptorRegistry.forResponder(new DefaultResponderLog(appName)))
+                        .interceptors(interceptorRegistry -> interceptorRegistry.forRequester(new DefaultRequesterLog(appName)))
+                        .resume(new Resume()
+                                .streamTimeout(Duration.ofSeconds(60))
+                                .sessionDuration(Duration.ofMinutes(5))
+                                .retry(
+                                        Retry.fixedDelay(Long.MAX_VALUE, Duration.ofSeconds(5))
+                                                .doBeforeRetry(s -> log.warn("Client disconnected. Trying to resume connection..."))
+                                )
+                        );
     }
 
 }

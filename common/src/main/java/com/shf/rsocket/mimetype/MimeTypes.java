@@ -1,4 +1,4 @@
-package com.shf.mimetype;
+package com.shf.rsocket.mimetype;
 
 
 import org.springframework.util.MimeType;

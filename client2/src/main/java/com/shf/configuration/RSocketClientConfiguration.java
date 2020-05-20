@@ -1,9 +1,10 @@
 package com.shf.configuration;
 
-import com.shf.lease.LeaseReceiver;
-import com.shf.lease.LeaseSender;
-import com.shf.lease.NoopStats;
-import com.shf.lease.ServerRoleEnum;
+import com.shf.rsocket.lease.LeaseReceiver;
+import com.shf.rsocket.lease.LeaseSender;
+import com.shf.rsocket.lease.NoopStats;
+import com.shf.rsocket.lease.ServerRoleEnum;
+import io.rsocket.frame.decoder.PayloadDecoder;
 import io.rsocket.lease.Leases;
 import io.rsocket.metadata.WellKnownMimeType;
 import io.rsocket.transport.netty.client.TcpClientTransport;
@@ -43,7 +44,7 @@ public class RSocketClientConfiguration {
                                 Leases.<NoopStats>create()
                                         .receiver(new LeaseReceiver(ServerRoleEnum.CLIENT))
                                         .sender(new LeaseSender(ServerRoleEnum.CLIENT, 3_000, 5))
-                        )
+                        ).payloadDecoder(PayloadDecoder.ZERO_COPY)
                 )
                 .setupData("Client2-abc")
                 // could send multiple metadata in a setup frame.

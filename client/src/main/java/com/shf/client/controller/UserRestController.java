@@ -24,11 +24,11 @@ import java.util.Map;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
-import static com.shf.mimetype.MimeTypes.FOO_MIME_TYPE;
-import static com.shf.mimetype.MimeTypes.MAP_MIME_TYPE;
-import static com.shf.mimetype.MimeTypes.PARAMETERIZED_TYPE_MIME_TYPE;
-import static com.shf.mimetype.MimeTypes.REFRESH_TOKEN_MIME_TYPE;
-import static com.shf.mimetype.MimeTypes.SECURITY_TOKEN_MIME_TYPE;
+import static com.shf.rsocket.mimetype.MimeTypes.FOO_MIME_TYPE;
+import static com.shf.rsocket.mimetype.MimeTypes.MAP_MIME_TYPE;
+import static com.shf.rsocket.mimetype.MimeTypes.PARAMETERIZED_TYPE_MIME_TYPE;
+import static com.shf.rsocket.mimetype.MimeTypes.REFRESH_TOKEN_MIME_TYPE;
+import static com.shf.rsocket.mimetype.MimeTypes.SECURITY_TOKEN_MIME_TYPE;
 
 /**
  * Description:
@@ -236,7 +236,6 @@ public class UserRestController {
                 .retrieveMono(String.class);
     }
 
-
     private Map<String, Object> buildMapHeader() {
         Map<String, Object> map = new HashMap<>(2);
         map.put("foo", "bar");
@@ -244,6 +243,7 @@ public class UserRestController {
         return map;
     }
 
+    /*************************graceful shutdown***********************/
     @GetMapping(value = "slow/handler")
     public Publisher<String> slowHandler() throws InterruptedException {
         log.info("Receive a 'slow/handler' request.");

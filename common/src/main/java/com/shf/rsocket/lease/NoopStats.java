@@ -1,4 +1,4 @@
-package com.shf.lease;
+package com.shf.rsocket.lease;
 
 import io.rsocket.lease.LeaseStats;
 
