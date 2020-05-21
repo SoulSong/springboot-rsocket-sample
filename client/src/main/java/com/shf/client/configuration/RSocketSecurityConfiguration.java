@@ -1,7 +1,5 @@
 package com.shf.client.configuration;
 
-import com.shf.client.server.log.interceptor.DefaultRequestLogPayloadInterceptor;
-
 import org.springframework.boot.autoconfigure.security.rsocket.RSocketSecurityAutoConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -44,9 +42,9 @@ public class RSocketSecurityConfiguration {
                     .anyRequest().authenticated()
                     // payloads that have no metadata have no authorization rules.
                     .anyExchange().permitAll();
-        }).simpleAuthentication(Customizer.withDefaults())
-                // Add customized payload interceptor for logging request
-                .addPayloadInterceptor(new DefaultRequestLogPayloadInterceptor(rSocketStrategies));
+        }).simpleAuthentication(Customizer.withDefaults());
+        // Add customized payload interceptor for logging request
+        // addPayloadInterceptor(new DefaultRequestLogPayloadInterceptor(rSocketStrategies));
         return rSocket.build();
     }
 

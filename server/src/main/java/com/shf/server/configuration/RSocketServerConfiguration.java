@@ -89,17 +89,26 @@ public class RSocketServerConfiguration {
     @Bean
     RSocketServerCustomizer resumeServerCustomizer() {
         return (rSocketServer) ->
-                rSocketServer.payloadDecoder(PayloadDecoder.ZERO_COPY)
-                        .interceptors(interceptorRegistry -> interceptorRegistry.forResponder(new DefaultResponderLog(appName)))
-                        .interceptors(interceptorRegistry -> interceptorRegistry.forRequester(new DefaultRequesterLog(appName)))
-                        .resume(new Resume()
-                                .streamTimeout(Duration.ofSeconds(60))
-                                .sessionDuration(Duration.ofMinutes(5))
-                                .retry(
-                                        Retry.fixedDelay(Long.MAX_VALUE, Duration.ofSeconds(5))
-                                                .doBeforeRetry(s -> log.warn("Client disconnected. Trying to resume connection..."))
-                                )
-                        );
+                rSocketServer.resume(new Resume()
+                        .streamTimeout(Duration.ofSeconds(60))
+                        .sessionDuration(Duration.ofMinutes(5))
+                        .retry(
+                                Retry.fixedDelay(Long.MAX_VALUE, Duration.ofSeconds(5))
+                                        .doBeforeRetry(s -> log.warn("Client disconnected. Trying to resume connection..."))
+                        )
+                );
     }
 
+    /**
+     * customize RSocketServer
+     *
+     * @return RSocketServerCustomizer
+     */
+    @Bean
+    RSocketServerCustomizer rSocketServerCustomizer() {
+        return (rSocketServer) ->
+                rSocketServer.payloadDecoder(PayloadDecoder.ZERO_COPY)
+                        .interceptors(interceptorRegistry -> interceptorRegistry.forResponder(new DefaultResponderLog(appName)))
+                        .interceptors(interceptorRegistry -> interceptorRegistry.forRequester(new DefaultRequesterLog(appName)));
+    }
 }

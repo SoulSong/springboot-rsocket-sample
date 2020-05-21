@@ -3,6 +3,7 @@ package com.shf.client.server.log.interceptor;
 import com.shf.client.server.log.converter.DefaultPayloadExchangeLogInfoConverter;
 import com.shf.client.server.log.converter.PayloadExchangeLogInfoConverter;
 
+import com.shf.rsocket.log.AbstractRSocketLog;
 import org.apache.commons.collections4.MapUtils;
 import org.springframework.core.Ordered;
 import org.springframework.messaging.rsocket.RSocketStrategies;
@@ -23,11 +24,14 @@ import reactor.core.publisher.Mono;
  * Customized a {@link PayloadInterceptor} for logging request.
  * It refers to {@link AuthenticationPayloadInterceptor}.
  * Finally it will be wried into {@link PayloadSocketAcceptorInterceptor}
+ * <p>
+ * Deprecated, use {@link AbstractRSocketLog} instead.
  *
  * @author songhaifeng
  * @date 2019/12/21 21:38
  */
 @Slf4j
+@Deprecated
 public class DefaultRequestLogPayloadInterceptor implements PayloadInterceptor, Ordered {
 
     private PayloadExchangeLogInfoConverter converter;

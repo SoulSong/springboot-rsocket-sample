@@ -29,11 +29,13 @@ public abstract class AbstractRSocketLog implements RSocketLogInterceptor {
 
     @Override
     public void log(Payload payload) {
+        log.info(">>>>>>>>>>>>>>>>Log Request>>>>>>>>>>>>>>>>>>>");
         if (payload.hasMetadata()) {
             log.info("[{}], payload.data->{};payload.metadata->{};", getPrefix(), payload.getDataUtf8(), payload.getMetadataUtf8());
         } else {
             log.info("[{}], payload.data->{};", getPrefix(), payload.getDataUtf8());
         }
+        log.info(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>");
     }
 
     @Override
@@ -47,7 +49,9 @@ public abstract class AbstractRSocketLog implements RSocketLogInterceptor {
                 Mono<Payload> responsePayload = super.requestResponse(payload);
                 return responsePayload.doOnSuccess(response -> {
                     stopWatch.stop();
+                    log.info(">>>>>>>>>>>>>>>>Log Response>>>>>>>>>>>>>>>>>>>");
                     log.info("[{}-Response payload] {}, spent:{}ms", getResponsePrefix(), response.getDataUtf8(), stopWatch.getTotalTimeMillis());
+                    log.info(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>");
                 }).doFinally(signalType -> {
                     if (stopWatch.isRunning()) {
                         stopWatch.stop();

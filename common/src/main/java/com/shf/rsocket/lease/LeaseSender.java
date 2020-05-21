@@ -36,7 +36,7 @@ public class LeaseSender implements Function<Optional<NoopStats>, Flux<Lease>> {
         return Flux.interval(ofSeconds(1), ofSeconds(10))
                 .onBackpressureLatest()
                 .map(tick -> {
-                    log.info("{} : responder sends new leases: ttl: {}, requests: {}",
+                    log.debug("{} : responder sends new leases: ttl: {}, requests: {}",
                             serverRole, ttlMillis, allowedRequests);
                     return Lease.create(ttlMillis, allowedRequests);
                 });

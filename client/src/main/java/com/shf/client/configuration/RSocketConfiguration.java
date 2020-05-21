@@ -8,6 +8,7 @@ import com.shf.rsocket.lease.NoopStats;
 import com.shf.rsocket.lease.ServerRoleEnum;
 import com.shf.rsocket.log.DefaultRequesterLog;
 import com.shf.rsocket.log.DefaultResponderLog;
+
 import io.rsocket.core.Resume;
 import io.rsocket.frame.decoder.PayloadDecoder;
 import io.rsocket.lease.Leases;
@@ -200,6 +201,7 @@ public class RSocketConfiguration {
                     .connect(TcpClientTransport.create(new InetSocketAddress("127.0.0.1", 7000)))
                     .retry(5)
                     .cache()
+                    .doOnError(exception -> log.error("Connect error : {}", exception.getMessage()))
                     .block();
         }
     }
@@ -302,6 +304,19 @@ public class RSocketConfiguration {
                             // issue 5 leases to each client, the timeToLiveMillis is 7s. Suggest the ttl bigger then the lease renew frequency .
                             .sender(new LeaseSender(ServerRoleEnum.SERVER, 7_000, 5))
             );
+        }
+
+        /**
+         * customize RSocketServer
+         *
+         * @return RSocketServerCustomizer
+         */
+        @Bean
+        RSocketServerCustomizer rSocketServerCustomizer(@Value("${spring.application.name}") String appName) {
+            return (rSocketServer) ->
+                    rSocketServer.payloadDecoder(PayloadDecoder.ZERO_COPY)
+                            .interceptors(interceptorRegistry -> interceptorRegistry.forResponder(new DefaultResponderLog(appName)))
+                            .interceptors(interceptorRegistry -> interceptorRegistry.forRequester(new DefaultRequesterLog(appName)));
         }
     }
 

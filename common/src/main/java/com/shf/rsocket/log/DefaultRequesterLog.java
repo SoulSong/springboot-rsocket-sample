@@ -1,6 +1,5 @@
 package com.shf.rsocket.log;
 
-import io.rsocket.plugins.LimitRateInterceptor;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
 

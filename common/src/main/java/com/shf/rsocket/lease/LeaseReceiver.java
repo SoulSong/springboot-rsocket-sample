@@ -35,7 +35,7 @@ public class LeaseReceiver implements Consumer<Flux<Lease>> {
     @Override
     public void accept(Flux<Lease> receivedLeases) {
         receivedLeases.subscribe(
-                lease -> log.info("{} : requester receives leases - ttl: {}, requests: {}, availability: {}",
+                lease -> log.debug("{} : requester receives leases - ttl: {}, requests: {}, availability: {}",
                         serverRole, lease.getTimeToLiveMillis(), lease.getAllowedRequests(), lease.availability()
                 )
         );
