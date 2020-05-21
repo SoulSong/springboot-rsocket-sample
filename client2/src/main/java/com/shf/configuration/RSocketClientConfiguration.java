@@ -4,15 +4,18 @@ import com.shf.rsocket.lease.LeaseReceiver;
 import com.shf.rsocket.lease.LeaseSender;
 import com.shf.rsocket.lease.NoopStats;
 import com.shf.rsocket.lease.ServerRoleEnum;
+import com.shf.rsocket.log.DefaultRequesterLog;
 import io.rsocket.frame.decoder.PayloadDecoder;
 import io.rsocket.lease.Leases;
 import io.rsocket.metadata.WellKnownMimeType;
 import io.rsocket.transport.netty.client.TcpClientTransport;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.rsocket.messaging.RSocketStrategiesCustomizer;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.messaging.rsocket.RSocketRequester;
+import org.springframework.messaging.rsocket.RSocketStrategies;
 import org.springframework.security.rsocket.metadata.SimpleAuthenticationEncoder;
 import org.springframework.security.rsocket.metadata.UsernamePasswordMetadata;
 import org.springframework.util.MimeTypeUtils;
@@ -35,7 +38,7 @@ import java.util.Arrays;
 public class RSocketClientConfiguration {
 
     @Bean
-    public RSocketRequester rSocketRequester(RSocketRequester.Builder builder) {
+    public RSocketRequester rSocketRequester(RSocketRequester.Builder builder, RSocketStrategies rSocketStrategies, @Value("${spring.application.name}") String appName) {
         // Test `setup().hasRole("SETUP")` which is configured on the server side.
         final UsernamePasswordMetadata credentials = new UsernamePasswordMetadata("setup", "654321");
         return builder
@@ -43,8 +46,9 @@ public class RSocketClientConfiguration {
                         rSocketConnector.lease(() ->
                                 Leases.<NoopStats>create()
                                         .receiver(new LeaseReceiver(ServerRoleEnum.CLIENT))
-                                        .sender(new LeaseSender(ServerRoleEnum.CLIENT, 3_000, 5))
-                        ).payloadDecoder(PayloadDecoder.ZERO_COPY)
+                                        .sender(new LeaseSender(ServerRoleEnum.CLIENT, 3_000, 5)))
+                                .payloadDecoder(PayloadDecoder.ZERO_COPY)
+                                .interceptors(interceptorRegistry -> interceptorRegistry.forRequester(new DefaultRequesterLog(appName, rSocketStrategies.metadataExtractor())))
                 )
                 .setupData("Client2-abc")
                 // could send multiple metadata in a setup frame.
@@ -56,7 +60,7 @@ public class RSocketClientConfiguration {
     }
 
     /**
-     * Add basic authentication decoder on the client side.
+     * Add simple authentication decoder on the client side.
      *
      * @return RSocketStrategiesCustomizer
      */

@@ -2,6 +2,7 @@ package com.shf.rsocket.log;
 
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.messaging.rsocket.MetadataExtractor;
 
 /**
  * description :
@@ -11,19 +12,18 @@ import lombok.extern.slf4j.Slf4j;
  */
 @Slf4j
 public class DefaultResponderLog extends AbstractRSocketLog {
-    private String appName;
 
-    public DefaultResponderLog(@NonNull String appName) {
-        this.appName = appName;
+    public DefaultResponderLog(@NonNull String appName, @NonNull MetadataExtractor metadataExtractor) {
+        super(appName, metadataExtractor);
     }
 
     @Override
     String getPrefix() {
-        return appName + RECEIVE;
+        return getAppName() + RECEIVE;
     }
 
     @Override
     String getResponsePrefix() {
-        return appName + SEND;
+        return getAppName() + SEND;
     }
 }

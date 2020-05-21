@@ -1,11 +1,13 @@
-package com.shf.client.server.log;
-
-import java.util.Map;
+package com.shf.rsocket.log;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import lombok.ToString;
+import lombok.extern.slf4j.Slf4j;
+
+import java.util.Map;
 
 /**
  * Description:
@@ -18,6 +20,8 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @NoArgsConstructor
 @Builder
+@ToString
+@Slf4j
 public class RequestLogInfo {
     /**
      * payload data
@@ -28,4 +32,9 @@ public class RequestLogInfo {
      */
     private Map<String, Object> metadata;
 
+    public void log(final String prefix) {
+        log.info(">>>>>>>>>>>>>>>>Log Request>>>>>>>>>>>>>>>>>>>");
+        log.info("[{}], {}", prefix, this.toString());
+        log.info(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>\n");
+    }
 }

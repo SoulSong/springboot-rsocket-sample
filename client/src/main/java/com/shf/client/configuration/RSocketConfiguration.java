@@ -133,8 +133,8 @@ public class RSocketConfiguration {
                                                             .doBeforeRetry(s -> log.warn("Server disconnected. Trying to resume connection..."))
                                             )
                                     )
-                                    .interceptors(interceptorRegistry -> interceptorRegistry.forRequester(new DefaultRequesterLog(appName)))
-                                    .interceptors(interceptorRegistry -> interceptorRegistry.forResponder(new DefaultResponderLog(appName)))
+                                    .interceptors(interceptorRegistry -> interceptorRegistry.forRequester(new DefaultRequesterLog(appName,strategies.metadataExtractor())))
+                                    .interceptors(interceptorRegistry -> interceptorRegistry.forResponder(new DefaultResponderLog(appName,strategies.metadataExtractor())))
                     );
         }
 
@@ -312,11 +312,11 @@ public class RSocketConfiguration {
          * @return RSocketServerCustomizer
          */
         @Bean
-        RSocketServerCustomizer rSocketServerCustomizer(@Value("${spring.application.name}") String appName) {
+        RSocketServerCustomizer rSocketServerCustomizer(@Value("${spring.application.name}") String appName, RSocketStrategies strategies) {
             return (rSocketServer) ->
                     rSocketServer.payloadDecoder(PayloadDecoder.ZERO_COPY)
-                            .interceptors(interceptorRegistry -> interceptorRegistry.forResponder(new DefaultResponderLog(appName)))
-                            .interceptors(interceptorRegistry -> interceptorRegistry.forRequester(new DefaultRequesterLog(appName)));
+                            .interceptors(interceptorRegistry -> interceptorRegistry.forResponder(new DefaultResponderLog(appName, strategies.metadataExtractor())))
+                            .interceptors(interceptorRegistry -> interceptorRegistry.forRequester(new DefaultRequesterLog(appName, strategies.metadataExtractor())));
         }
     }
 

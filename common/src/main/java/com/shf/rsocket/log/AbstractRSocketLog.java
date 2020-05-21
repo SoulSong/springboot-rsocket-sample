@@ -2,12 +2,19 @@ package com.shf.rsocket.log;
 
 import io.rsocket.Payload;
 import io.rsocket.RSocket;
+import io.rsocket.metadata.WellKnownMimeType;
 import io.rsocket.plugins.LimitRateInterceptor;
 import io.rsocket.util.RSocketProxy;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.messaging.rsocket.MetadataExtractor;
+import org.springframework.util.Assert;
+import org.springframework.util.MimeType;
+import org.springframework.util.MimeTypeUtils;
 import org.springframework.util.StopWatch;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+
+import java.util.Map;
 
 /**
  * description :
@@ -18,10 +25,24 @@ import reactor.core.publisher.Mono;
  */
 @Slf4j
 public abstract class AbstractRSocketLog implements RSocketLogInterceptor {
+    private final MimeType metadataMimetype = MimeTypeUtils.parseMimeType(
+            WellKnownMimeType.MESSAGE_RSOCKET_COMPOSITE_METADATA.getString());
+
+    private final String appName;
+    private final MetadataExtractor metadataExtractor;
 
     static final String SEND = " send";
     static final String RECEIVE = " receive";
 
+    public AbstractRSocketLog(String appName, MetadataExtractor metadataExtractor) {
+        Assert.notNull(metadataExtractor, "metadataExtractor must not be null.");
+        this.appName = appName;
+        this.metadataExtractor = metadataExtractor;
+    }
+
+    public String getAppName() {
+        return appName;
+    }
 
     abstract String getPrefix();
 
@@ -29,13 +50,14 @@ public abstract class AbstractRSocketLog implements RSocketLogInterceptor {
 
     @Override
     public void log(Payload payload) {
-        log.info(">>>>>>>>>>>>>>>>Log Request>>>>>>>>>>>>>>>>>>>");
+        RequestLogInfo.RequestLogInfoBuilder builder = RequestLogInfo.builder();
+
+        builder.data(payload.getDataUtf8());
         if (payload.hasMetadata()) {
-            log.info("[{}], payload.data->{};payload.metadata->{};", getPrefix(), payload.getDataUtf8(), payload.getMetadataUtf8());
-        } else {
-            log.info("[{}], payload.data->{};", getPrefix(), payload.getDataUtf8());
+            Map<String, Object> metadata = metadataExtractor.extract(payload, metadataMimetype);
+            builder.metadata(metadata);
         }
-        log.info(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>");
+        builder.build().log(getPrefix());
     }
 
     @Override
@@ -51,7 +73,7 @@ public abstract class AbstractRSocketLog implements RSocketLogInterceptor {
                     stopWatch.stop();
                     log.info(">>>>>>>>>>>>>>>>Log Response>>>>>>>>>>>>>>>>>>>");
                     log.info("[{}-Response payload] {}, spent:{}ms", getResponsePrefix(), response.getDataUtf8(), stopWatch.getTotalTimeMillis());
-                    log.info(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>");
+                    log.info(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>\n");
                 }).doFinally(signalType -> {
                     if (stopWatch.isRunning()) {
                         stopWatch.stop();

@@ -1,7 +1,6 @@
 package com.shf.server.configuration;
 
 import com.shf.entity.Foo;
-
 import com.shf.rsocket.log.DefaultRequesterLog;
 import com.shf.rsocket.log.DefaultResponderLog;
 import io.rsocket.core.Resume;
@@ -14,6 +13,7 @@ import org.springframework.boot.rsocket.server.RSocketServerCustomizer;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.ParameterizedTypeReference;
+import org.springframework.messaging.rsocket.RSocketStrategies;
 import org.springframework.util.MimeTypeUtils;
 import reactor.util.retry.Retry;
 
@@ -105,10 +105,10 @@ public class RSocketServerConfiguration {
      * @return RSocketServerCustomizer
      */
     @Bean
-    RSocketServerCustomizer rSocketServerCustomizer() {
+    RSocketServerCustomizer rSocketServerCustomizer(RSocketStrategies rSocketStrategies) {
         return (rSocketServer) ->
                 rSocketServer.payloadDecoder(PayloadDecoder.ZERO_COPY)
-                        .interceptors(interceptorRegistry -> interceptorRegistry.forResponder(new DefaultResponderLog(appName)))
-                        .interceptors(interceptorRegistry -> interceptorRegistry.forRequester(new DefaultRequesterLog(appName)));
+                        .interceptors(interceptorRegistry -> interceptorRegistry.forResponder(new DefaultResponderLog(appName, rSocketStrategies.metadataExtractor())))
+                        .interceptors(interceptorRegistry -> interceptorRegistry.forRequester(new DefaultRequesterLog(appName, rSocketStrategies.metadataExtractor())));
     }
 }
