@@ -1,6 +1,6 @@
 package com.shf.client.server.log.converter;
 
-import com.shf.rsocket.log.RequestLogInfo;
+import com.shf.rsocket.log.entity.RequestLogInfo;
 import org.springframework.security.rsocket.api.PayloadExchange;
 
 /**

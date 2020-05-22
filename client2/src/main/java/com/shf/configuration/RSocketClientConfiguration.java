@@ -4,7 +4,7 @@ import com.shf.rsocket.lease.LeaseReceiver;
 import com.shf.rsocket.lease.LeaseSender;
 import com.shf.rsocket.lease.NoopStats;
 import com.shf.rsocket.lease.ServerRoleEnum;
-import com.shf.rsocket.log.DefaultRequesterLog;
+import com.shf.rsocket.log.DefaultRequesterLogInterceptor;
 import io.rsocket.frame.decoder.PayloadDecoder;
 import io.rsocket.lease.Leases;
 import io.rsocket.metadata.WellKnownMimeType;
@@ -48,7 +48,7 @@ public class RSocketClientConfiguration {
                                         .receiver(new LeaseReceiver(ServerRoleEnum.CLIENT))
                                         .sender(new LeaseSender(ServerRoleEnum.CLIENT, 3_000, 5)))
                                 .payloadDecoder(PayloadDecoder.ZERO_COPY)
-                                .interceptors(interceptorRegistry -> interceptorRegistry.forRequester(new DefaultRequesterLog(appName, rSocketStrategies.metadataExtractor())))
+                                .interceptors(interceptorRegistry -> interceptorRegistry.forRequester(new DefaultRequesterLogInterceptor(appName, rSocketStrategies.metadataExtractor())))
                 )
                 .setupData("Client2-abc")
                 // could send multiple metadata in a setup frame.

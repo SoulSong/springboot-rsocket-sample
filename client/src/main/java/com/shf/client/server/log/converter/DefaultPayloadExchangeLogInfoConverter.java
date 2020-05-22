@@ -1,6 +1,6 @@
 package com.shf.client.server.log.converter;
 
-import com.shf.rsocket.log.RequestLogInfo;
+import com.shf.rsocket.log.entity.RequestLogInfo;
 import io.netty.buffer.ByteBufUtil;
 import io.netty.util.CharsetUtil;
 import io.rsocket.Payload;

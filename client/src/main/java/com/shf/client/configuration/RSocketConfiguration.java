@@ -2,13 +2,14 @@ package com.shf.client.configuration;
 
 import com.shf.client.responder.annotation.RSocketClientResponder2;
 import com.shf.client.responder.controller.Requester1ResponderController;
+import com.shf.rsocket.entity.RSocketRole;
 import com.shf.rsocket.lease.LeaseReceiver;
 import com.shf.rsocket.lease.LeaseSender;
 import com.shf.rsocket.lease.NoopStats;
 import com.shf.rsocket.lease.ServerRoleEnum;
-import com.shf.rsocket.log.DefaultRequesterLog;
-import com.shf.rsocket.log.DefaultResponderLog;
-
+import com.shf.rsocket.log.DefaultRequesterLogInterceptor;
+import com.shf.rsocket.log.DefaultResponderLogInterceptor;
+import com.shf.rsocket.log.DefaultSocketAcceptorLogInterceptor;
 import io.rsocket.core.Resume;
 import io.rsocket.frame.decoder.PayloadDecoder;
 import io.rsocket.lease.Leases;
@@ -84,7 +85,7 @@ public class RSocketConfiguration {
          * This is done on purpose since this builder is stateful and you shouldn’t create requesters with different setups using the same instance.
          * Like requester and requester2 as below.
          * <p>
-         * Native API implements as follows：
+         * Native API(1.0.0.RC5) implements as follows：
          * <pre>{@code
          *      @Bean
          *     public RSocket rSocket() {
@@ -133,8 +134,8 @@ public class RSocketConfiguration {
                                                             .doBeforeRetry(s -> log.warn("Server disconnected. Trying to resume connection..."))
                                             )
                                     )
-                                    .interceptors(interceptorRegistry -> interceptorRegistry.forRequester(new DefaultRequesterLog(appName,strategies.metadataExtractor())))
-                                    .interceptors(interceptorRegistry -> interceptorRegistry.forResponder(new DefaultResponderLog(appName,strategies.metadataExtractor())))
+                                    .interceptors(interceptorRegistry -> interceptorRegistry.forRequester(new DefaultRequesterLogInterceptor(appName,strategies.metadataExtractor())))
+                                    .interceptors(interceptorRegistry -> interceptorRegistry.forSocketAcceptor(new DefaultSocketAcceptorLogInterceptor(appName, strategies.metadataExtractor(), RSocketRole.RSOCKET_CONNECTOR)))
                     );
         }
 
@@ -315,8 +316,8 @@ public class RSocketConfiguration {
         RSocketServerCustomizer rSocketServerCustomizer(@Value("${spring.application.name}") String appName, RSocketStrategies strategies) {
             return (rSocketServer) ->
                     rSocketServer.payloadDecoder(PayloadDecoder.ZERO_COPY)
-                            .interceptors(interceptorRegistry -> interceptorRegistry.forResponder(new DefaultResponderLog(appName, strategies.metadataExtractor())))
-                            .interceptors(interceptorRegistry -> interceptorRegistry.forRequester(new DefaultRequesterLog(appName, strategies.metadataExtractor())));
+                            .interceptors(interceptorRegistry -> interceptorRegistry.forResponder(new DefaultResponderLogInterceptor(appName, strategies.metadataExtractor())))
+                            .interceptors(interceptorRegistry -> interceptorRegistry.forRequester(new DefaultRequesterLogInterceptor(appName, strategies.metadataExtractor())));
         }
     }
 

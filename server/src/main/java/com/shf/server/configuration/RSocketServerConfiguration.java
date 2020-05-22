@@ -1,8 +1,8 @@
 package com.shf.server.configuration;
 
 import com.shf.entity.Foo;
-import com.shf.rsocket.log.DefaultRequesterLog;
-import com.shf.rsocket.log.DefaultResponderLog;
+import com.shf.rsocket.entity.RSocketRole;
+import com.shf.rsocket.log.DefaultSocketAcceptorLogInterceptor;
 import io.rsocket.core.Resume;
 import io.rsocket.frame.decoder.PayloadDecoder;
 import lombok.extern.slf4j.Slf4j;
@@ -108,7 +108,7 @@ public class RSocketServerConfiguration {
     RSocketServerCustomizer rSocketServerCustomizer(RSocketStrategies rSocketStrategies) {
         return (rSocketServer) ->
                 rSocketServer.payloadDecoder(PayloadDecoder.ZERO_COPY)
-                        .interceptors(interceptorRegistry -> interceptorRegistry.forResponder(new DefaultResponderLog(appName, rSocketStrategies.metadataExtractor())))
-                        .interceptors(interceptorRegistry -> interceptorRegistry.forRequester(new DefaultRequesterLog(appName, rSocketStrategies.metadataExtractor())));
+                        .interceptors(interceptorRegistry ->
+                                interceptorRegistry.forSocketAcceptor(new DefaultSocketAcceptorLogInterceptor(appName, rSocketStrategies.metadataExtractor(), RSocketRole.RSOCKET_SERVER)));
     }
 }

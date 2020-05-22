@@ -2,7 +2,7 @@ package com.shf.client.server.log.interceptor;
 
 import com.shf.client.server.log.converter.DefaultPayloadExchangeLogInfoConverter;
 import com.shf.client.server.log.converter.PayloadExchangeLogInfoConverter;
-import com.shf.rsocket.log.AbstractRSocketLog;
+import com.shf.rsocket.log.PayloadLogRSocket;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.Ordered;
 import org.springframework.messaging.rsocket.RSocketStrategies;
@@ -20,7 +20,7 @@ import reactor.core.publisher.Mono;
  * It refers to {@link AuthenticationPayloadInterceptor}.
  * Finally it will be wried into {@link PayloadSocketAcceptorInterceptor}
  * <p>
- * Deprecated, use {@link AbstractRSocketLog} instead.
+ * Deprecated, use {@link PayloadLogRSocket} instead.
  *
  * @author songhaifeng
  * @date 2019/12/21 21:38
