@@ -49,6 +49,7 @@ All interaction models defined in **RSocket**.
     - see more in [RSocketSecurityConfiguration](./client/src/main/java/com/shf/client/configuration/RSocketSecurityConfiguration.java)
 - Graceful shutdown
 - Lease
+- Customize `RSocketInterceptor` and `SocketAcceptorInterceptor` for logging payload
 
 # Test Endpoints
 
