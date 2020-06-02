@@ -1,17 +1,17 @@
-package com.shf.rsocket.log;
+package com.shf.rsocket.interceptor.log;
 
+import com.shf.rsocket.entity.PayloadInfo;
 import com.shf.rsocket.entity.RSocketRole;
-import com.shf.rsocket.log.entity.ConnectionSetupLogInfo;
+import com.shf.rsocket.interceptor.OrderRSocketInterceptor;
+import com.shf.rsocket.interceptor.PayloadExtractFunction;
+import com.shf.rsocket.interceptor.PayloadUtils;
+import com.shf.rsocket.interceptor.log.entity.ConnectionSetupLogInfo;
 import io.rsocket.ConnectionSetupPayload;
 import io.rsocket.SocketAcceptor;
 import io.rsocket.plugins.InterceptorRegistry;
 import io.rsocket.plugins.SocketAcceptorInterceptor;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.messaging.rsocket.MetadataExtractor;
-import org.springframework.util.Assert;
-
-import java.util.Map;
 
 /**
  * description :
@@ -24,23 +24,28 @@ import java.util.Map;
  * It is the same as {@link DefaultRequesterLogInterceptor} and {@link DefaultResponderLogInterceptor} mostly.
  * 1、Compared to {@link DefaultRequesterLogInterceptor} and {@link DefaultResponderLogInterceptor}, {@link DefaultSocketAcceptorLogInterceptor} has an extra connectionPayload.
  * 2、If use the {@link DefaultSocketAcceptorLogInterceptor} for the {@link io.rsocket.core.RSocketConnector},
- * must register a {@link DefaultRequesterLogInterceptor} together for logging the request payload.
+ * must register a {@link DefaultRequesterLogInterceptor} together for logging the request payload(as a requester role).
+ * <p>
+ * Deprecated, use {@link DefaultConnectionSetUpLogInterceptor} instead of this for logging connectionSetup.
+ * And use {@link OrderRSocketInterceptor} instead of this for the requester and responder interceptors.
  *
  * @author songhaifeng
  * @date 2020/5/22 11:33
  */
 @Slf4j
+@Deprecated
 public class DefaultSocketAcceptorLogInterceptor implements RSocketAcceptorLogInterceptor {
 
     private final String appName;
-    private final MetadataExtractor metadataExtractor;
     private final RSocketRole rSocketRole;
+    private final PayloadExtractFunction payloadExtractFunction;
 
-    public DefaultSocketAcceptorLogInterceptor(@NonNull String appName, @NonNull MetadataExtractor metadataExtractor, @NonNull RSocketRole rSocketRole) {
-        Assert.notNull(metadataExtractor, "metadataExtractor must not be null.");
+    public DefaultSocketAcceptorLogInterceptor(@NonNull String appName,
+                                               @NonNull RSocketRole rSocketRole,
+                                               @NonNull PayloadExtractFunction payloadExtractFunction) {
         this.appName = appName;
-        this.metadataExtractor = metadataExtractor;
         this.rSocketRole = rSocketRole;
+        this.payloadExtractFunction = payloadExtractFunction;
     }
 
     /**
@@ -54,9 +59,9 @@ public class DefaultSocketAcceptorLogInterceptor implements RSocketAcceptorLogIn
         return (connectionSetupPayload, sendingSocket) -> {
             logConnect(connectionSetupPayload);
             // The `sendingSocket` is a server-requester(can not be a requester), so equals to {@link InterceptorRegistry#forRequester(RSocketInterceptor)}.
-            return socketAcceptor.accept(connectionSetupPayload, new PayloadLogRSocket(sendingSocket, metadataExtractor, appName + SEND, appName + RECEIVE))
+            return socketAcceptor.accept(connectionSetupPayload, new PayloadLogRSocket(sendingSocket, payloadExtractFunction, appName + SEND, appName + RECEIVE))
                     // The `acceptingSocket` is a responder or client-responder, so equals to {@link InterceptorRegistry#forResponder(RSocketInterceptor)}.
-                    .map(acceptingSocket -> new PayloadLogRSocket(acceptingSocket, metadataExtractor, appName + RECEIVE, appName + SEND));
+                    .map(acceptingSocket -> new PayloadLogRSocket(acceptingSocket, payloadExtractFunction, appName + RECEIVE, appName + SEND));
         };
     }
 
@@ -66,13 +71,10 @@ public class DefaultSocketAcceptorLogInterceptor implements RSocketAcceptorLogIn
      * @param setupPayload setupPayload
      */
     private void logConnect(ConnectionSetupPayload setupPayload) {
-        ConnectionSetupLogInfo.ConnectionSetupLogInfoBuilder builder = ConnectionSetupLogInfo.builder();
-        builder.data(setupPayload.getDataUtf8());
-
-        if (setupPayload.hasMetadata()) {
-            Map<String, Object> metadata = metadataExtractor.extract(setupPayload, METADATA_MIME_TYPE);
-            builder.metadata(metadata);
-        }
-        builder.build().log(appName, rSocketRole);
+        PayloadInfo payloadInfo = PayloadUtils.extractPayload(payloadExtractFunction, setupPayload);
+        ConnectionSetupLogInfo.builder().data(payloadInfo.getData())
+                .metadata(payloadInfo.getMetadata())
+                .build().log(appName, rSocketRole);
     }
+
 }

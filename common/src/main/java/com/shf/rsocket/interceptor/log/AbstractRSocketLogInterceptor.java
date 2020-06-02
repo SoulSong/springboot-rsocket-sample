@@ -1,10 +1,10 @@
-package com.shf.rsocket.log;
+package com.shf.rsocket.interceptor.log;
 
+import com.shf.rsocket.interceptor.PayloadExtractFunction;
 import io.rsocket.RSocket;
 import io.rsocket.plugins.LimitRateInterceptor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.messaging.rsocket.MetadataExtractor;
-import org.springframework.util.Assert;
+import reactor.util.annotation.NonNull;
 
 /**
  * description :
@@ -16,12 +16,11 @@ import org.springframework.util.Assert;
 @Slf4j
 public abstract class AbstractRSocketLogInterceptor implements RSocketLogInterceptor {
     private final String appName;
-    private final MetadataExtractor metadataExtractor;
+    private final PayloadExtractFunction payloadExtractFunction;
 
-    public AbstractRSocketLogInterceptor(String appName, MetadataExtractor metadataExtractor) {
-        Assert.notNull(metadataExtractor, "metadataExtractor must not be null.");
+    public AbstractRSocketLogInterceptor(String appName, @NonNull PayloadExtractFunction payloadExtractFunction) {
         this.appName = appName;
-        this.metadataExtractor = metadataExtractor;
+        this.payloadExtractFunction = payloadExtractFunction;
     }
 
     public String getAppName() {
@@ -34,6 +33,6 @@ public abstract class AbstractRSocketLogInterceptor implements RSocketLogInterce
 
     @Override
     public RSocket apply(RSocket rSocket) {
-        return new PayloadLogRSocket(rSocket, metadataExtractor, getRequestPrefix(), getResponsePrefix());
+        return new PayloadLogRSocket(rSocket, payloadExtractFunction, getRequestPrefix(), getResponsePrefix());
     }
 }

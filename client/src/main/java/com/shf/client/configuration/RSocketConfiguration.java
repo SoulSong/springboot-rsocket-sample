@@ -3,13 +3,16 @@ package com.shf.client.configuration;
 import com.shf.client.responder.annotation.RSocketClientResponder2;
 import com.shf.client.responder.controller.Requester1ResponderController;
 import com.shf.rsocket.entity.RSocketRole;
+import com.shf.rsocket.interceptor.PayloadExtractFunction;
+import com.shf.rsocket.interceptor.context.DefaultResponderContextInterceptor;
+import com.shf.rsocket.interceptor.log.DefaultConnectionSetUpLogInterceptor;
+import com.shf.rsocket.interceptor.log.DefaultRequesterLogInterceptor;
+import com.shf.rsocket.interceptor.log.DefaultResponderLogInterceptor;
 import com.shf.rsocket.lease.LeaseReceiver;
 import com.shf.rsocket.lease.LeaseSender;
 import com.shf.rsocket.lease.NoopStats;
 import com.shf.rsocket.lease.ServerRoleEnum;
-import com.shf.rsocket.log.DefaultRequesterLogInterceptor;
-import com.shf.rsocket.log.DefaultResponderLogInterceptor;
-import com.shf.rsocket.log.DefaultSocketAcceptorLogInterceptor;
+import com.shf.rsocket.spring.PayloadHandler;
 import io.rsocket.core.Resume;
 import io.rsocket.frame.decoder.PayloadDecoder;
 import io.rsocket.lease.Leases;
@@ -49,9 +52,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Predicate;
 
+import static com.shf.rsocket.interceptor.OrderRSocketInterceptor.DEFAULT_INTERCEPTOR_SORT;
 import static com.shf.rsocket.mimetype.MimeTypes.MAP_MIME_TYPE;
 import static com.shf.rsocket.mimetype.MimeTypes.REFRESH_TOKEN_MIME_TYPE;
 import static com.shf.rsocket.mimetype.MimeTypes.SECURITY_TOKEN_MIME_TYPE;
+import static com.shf.rsocket.mimetype.MimeTypes.TRACE_ID_MIME_TYPE;
 
 /**
  * Description:
@@ -70,6 +75,7 @@ public class RSocketConfiguration {
             new MetadataToExtractRef(MimeTypeUtils.APPLICATION_JSON, List.class, null, "connect-metadata"),
             new MetadataToExtractRef(SECURITY_TOKEN_MIME_TYPE, String.class, null, "securityToken"),
             new MetadataToExtractRef(REFRESH_TOKEN_MIME_TYPE, String.class, null, "refreshToken"),
+            new MetadataToExtractRef(TRACE_ID_MIME_TYPE, String.class, null, "traceId"),
             new MetadataToExtractRef(MAP_MIME_TYPE, null, new ParameterizedTypeReference<Map<String, Object>>() {
             }, "properties")
     );
@@ -118,6 +124,7 @@ public class RSocketConfiguration {
         @Bean
         @Scope("prototype")
         public RSocketRequester.Builder rSocketRequesterBuilder(RSocketStrategies strategies) {
+            PayloadExtractFunction payloadExtractFunction = PayloadHandler.payloadExtractFunction(strategies.metadataExtractor());
             return RSocketRequester.builder()
                     // default value is also WellKnownMimeType.MESSAGE_RSOCKET_COMPOSITE_METADATA, setting in DefaultRSocketRequesterBuilder
                     .metadataMimeType(MimeTypeUtils.parseMimeType(WellKnownMimeType.MESSAGE_RSOCKET_COMPOSITE_METADATA.getString()))
@@ -134,8 +141,22 @@ public class RSocketConfiguration {
                                                             .doBeforeRetry(s -> log.warn("Server disconnected. Trying to resume connection..."))
                                             )
                                     )
-                                    .interceptors(interceptorRegistry -> interceptorRegistry.forRequester(new DefaultRequesterLogInterceptor(appName,strategies.metadataExtractor())))
-                                    .interceptors(interceptorRegistry -> interceptorRegistry.forSocketAcceptor(new DefaultSocketAcceptorLogInterceptor(appName, strategies.metadataExtractor(), RSocketRole.RSOCKET_CONNECTOR)))
+                                    // As a client-responder
+                                    .interceptors(interceptorRegistry ->
+                                            interceptorRegistry.forResponder(new DefaultResponderLogInterceptor(appName, payloadExtractFunction)))
+                                    .interceptors(interceptorRegistry ->
+                                            interceptorRegistry.forResponder(new DefaultResponderContextInterceptor(payloadExtractFunction)))
+                                    // sort must be set after the register operation.
+                                    .interceptors(interceptorRegistry -> interceptorRegistry.forResponder(list -> {
+                                        list.sort(DEFAULT_INTERCEPTOR_SORT);
+                                    }))
+                                    // As a client-requester
+                                    .interceptors(interceptorRegistry ->
+                                            interceptorRegistry.forRequester(new DefaultRequesterLogInterceptor(appName, payloadExtractFunction)))
+                                    // As a client-side
+                                    .interceptors(interceptorRegistry ->
+                                            interceptorRegistry.forSocketAcceptor(new DefaultConnectionSetUpLogInterceptor(appName, RSocketRole.RSOCKET_CONNECTOR,
+                                                    payloadExtractFunction)))
                     );
         }
 
@@ -314,10 +335,21 @@ public class RSocketConfiguration {
          */
         @Bean
         RSocketServerCustomizer rSocketServerCustomizer(@Value("${spring.application.name}") String appName, RSocketStrategies strategies) {
+            PayloadExtractFunction payloadExtractFunction = PayloadHandler.payloadExtractFunction(strategies.metadataExtractor());
             return (rSocketServer) ->
                     rSocketServer.payloadDecoder(PayloadDecoder.ZERO_COPY)
-                            .interceptors(interceptorRegistry -> interceptorRegistry.forResponder(new DefaultResponderLogInterceptor(appName, strategies.metadataExtractor())))
-                            .interceptors(interceptorRegistry -> interceptorRegistry.forRequester(new DefaultRequesterLogInterceptor(appName, strategies.metadataExtractor())));
+                            .interceptors(interceptorRegistry ->
+                                    interceptorRegistry.forResponder(new DefaultResponderLogInterceptor(appName, payloadExtractFunction)))
+                            .interceptors(interceptorRegistry ->
+                                    interceptorRegistry.forResponder(new DefaultResponderContextInterceptor(payloadExtractFunction)))
+                            // sort must be set after the register operation.
+                            .interceptors(interceptorRegistry -> interceptorRegistry.forResponder(list -> {
+                                list.sort(DEFAULT_INTERCEPTOR_SORT);
+                            }))
+                            .interceptors(interceptorRegistry ->
+                                    interceptorRegistry.forRequester(new DefaultRequesterLogInterceptor(appName, payloadExtractFunction)))
+                            .interceptors(interceptorRegistry -> interceptorRegistry.forSocketAcceptor(new DefaultConnectionSetUpLogInterceptor(appName, RSocketRole.RSOCKET_SERVER,
+                                    payloadExtractFunction)));
         }
     }
 

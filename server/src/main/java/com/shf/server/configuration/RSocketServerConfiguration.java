@@ -2,7 +2,13 @@ package com.shf.server.configuration;
 
 import com.shf.entity.Foo;
 import com.shf.rsocket.entity.RSocketRole;
-import com.shf.rsocket.log.DefaultSocketAcceptorLogInterceptor;
+import com.shf.rsocket.interceptor.PayloadExtractFunction;
+import com.shf.rsocket.interceptor.context.DefaultResponderContextInterceptor;
+import com.shf.rsocket.interceptor.log.DefaultConnectionSetUpLogInterceptor;
+import com.shf.rsocket.interceptor.log.DefaultRequesterLogInterceptor;
+import com.shf.rsocket.interceptor.log.DefaultResponderLogInterceptor;
+import com.shf.rsocket.interceptor.trace.TraceConstant;
+import com.shf.rsocket.spring.PayloadHandler;
 import io.rsocket.core.Resume;
 import io.rsocket.frame.decoder.PayloadDecoder;
 import lombok.extern.slf4j.Slf4j;
@@ -21,11 +27,13 @@ import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 
+import static com.shf.rsocket.interceptor.OrderRSocketInterceptor.DEFAULT_INTERCEPTOR_SORT;
 import static com.shf.rsocket.mimetype.MimeTypes.FOO_MIME_TYPE;
 import static com.shf.rsocket.mimetype.MimeTypes.MAP_MIME_TYPE;
 import static com.shf.rsocket.mimetype.MimeTypes.PARAMETERIZED_TYPE_MIME_TYPE;
 import static com.shf.rsocket.mimetype.MimeTypes.REFRESH_TOKEN_MIME_TYPE;
 import static com.shf.rsocket.mimetype.MimeTypes.SECURITY_TOKEN_MIME_TYPE;
+import static com.shf.rsocket.mimetype.MimeTypes.TRACE_ID_MIME_TYPE;
 
 /**
  * Description:
@@ -54,6 +62,7 @@ public class RSocketServerConfiguration {
                 // the name is used with @header, each mimeType can be mapped a single name.
                 register.metadataToExtract(SECURITY_TOKEN_MIME_TYPE, String.class, "securityToken");
                 register.metadataToExtract(REFRESH_TOKEN_MIME_TYPE, String.class, "refreshToken");
+                register.metadataToExtract(TRACE_ID_MIME_TYPE, String.class, TraceConstant.TRACE_ID);
                 register.metadataToExtract(FOO_MIME_TYPE, Foo.class, "foo");
                 // registry with ParameterizedTypeReference for the special type.
                 register.metadataToExtract(MAP_MIME_TYPE, new ParameterizedTypeReference<Map<String, Object>>() {
@@ -106,9 +115,23 @@ public class RSocketServerConfiguration {
      */
     @Bean
     RSocketServerCustomizer rSocketServerCustomizer(RSocketStrategies rSocketStrategies) {
+        PayloadExtractFunction payloadExtractFunction = PayloadHandler.payloadExtractFunction(rSocketStrategies.metadataExtractor());
         return (rSocketServer) ->
                 rSocketServer.payloadDecoder(PayloadDecoder.ZERO_COPY)
                         .interceptors(interceptorRegistry ->
-                                interceptorRegistry.forSocketAcceptor(new DefaultSocketAcceptorLogInterceptor(appName, rSocketStrategies.metadataExtractor(), RSocketRole.RSOCKET_SERVER)));
+                                interceptorRegistry.forResponder(new DefaultResponderLogInterceptor(appName, payloadExtractFunction)))
+                        .interceptors(interceptorRegistry ->
+                                interceptorRegistry.forResponder(new DefaultResponderContextInterceptor(payloadExtractFunction)))
+                        // sort must be set after the register operation.
+                        .interceptors(interceptorRegistry -> interceptorRegistry.forResponder(list -> {
+                            list.sort(DEFAULT_INTERCEPTOR_SORT);
+                        }))
+                        .interceptors(interceptorRegistry ->
+                                interceptorRegistry.forRequester(new DefaultRequesterLogInterceptor(appName, payloadExtractFunction)))
+                        .interceptors(interceptorRegistry ->
+                                interceptorRegistry.forSocketAcceptor(new DefaultConnectionSetUpLogInterceptor(appName, RSocketRole.RSOCKET_SERVER,
+                                        payloadExtractFunction)));
     }
+
+
 }

@@ -1,5 +1,6 @@
-package com.shf.rsocket.log.entity;
+package com.shf.rsocket.interceptor.log.entity;
 
+import com.shf.rsocket.entity.PayloadInfo;
 import lombok.Builder;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -18,7 +19,7 @@ import java.util.Map;
 @EqualsAndHashCode(callSuper = true)
 @Data
 @Slf4j
-public class ResponseLogInfo extends LogInfo {
+public class ResponseLogInfo extends PayloadInfo {
     /**
      * execution time
      */

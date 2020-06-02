@@ -1,4 +1,4 @@
-package com.shf.rsocket.log;
+package com.shf.rsocket.interceptor.log;
 
 import io.rsocket.plugins.SocketAcceptorInterceptor;
 

@@ -3,8 +3,10 @@ package com.shf.server.controller;
 import com.shf.entity.Foo;
 import com.shf.entity.User;
 import com.shf.entity.UserRequest;
+import com.shf.rsocket.interceptor.trace.TraceConstant;
+import com.shf.rsocket.interceptor.trace.TraceContextHolder;
 import com.shf.server.repository.UserRepository;
-
+import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.MapUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.messaging.handler.annotation.DestinationVariable;
@@ -16,16 +18,15 @@ import org.springframework.messaging.handler.annotation.Payload;
 import org.springframework.messaging.rsocket.RSocketRequester;
 import org.springframework.messaging.rsocket.annotation.ConnectMapping;
 import org.springframework.stereotype.Controller;
-
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-
-import lombok.extern.slf4j.Slf4j;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+
 import static com.shf.rsocket.mimetype.MimeTypes.SECURITY_TOKEN_MIME_TYPE;
+import static com.shf.rsocket.mimetype.MimeTypes.TRACE_ID_MIME_TYPE;
 
 /**
  * Description:
@@ -42,15 +43,22 @@ public class UserController {
 
     /***********************************request/response******************************/
     @MessageMapping("user")
-    public Mono<User> user(UserRequest userRequest) {
-        return userRepository.getOne(userRequest.getId());
+    public Mono<User> user(UserRequest userRequest,
+                           @Header(value = TraceConstant.TRACE_ID, required = false, defaultValue = TraceConstant.UNKNOWN) String traceIdFromHeader) {
+        return TraceContextHolder.getTraceId().flatMap(traceId -> {
+            log.info("traceId from context is {}, traceId from header is {}", traceId, traceIdFromHeader);
+            return userRepository.getOne(userRequest.getId());
+        });
     }
 
     /***********************************Fire And Forget******************************/
     @MessageMapping("add.user")
-    public Mono<Void> add(User user) {
-        userRepository.add(user);
-        return Mono.empty();
+    public Mono<Void> add(User user, @Header(TraceConstant.TRACE_ID) String traceIdFromHeader) {
+        return TraceContextHolder.getTraceId().flatMap(traceId -> {
+            log.info("traceId from context is {}, traceId from header is {}", traceId, traceIdFromHeader);
+            userRepository.add(user);
+            return Mono.empty();
+        });
     }
 
     /***********************************Request Stream******************************/
@@ -61,27 +69,36 @@ public class UserController {
      * @return
      */
     @MessageMapping("list")
-    public Flux<User> list() {
-        return userRepository.list();
-    }
+    public Flux<User> list(@Header(TraceConstant.TRACE_ID) String traceIdFromHeader) {
+        return Flux.from(TraceContextHolder.getTraceId()).flatMap(traceId -> {
+            log.info("traceId from context is {}, traceId from header is {}", traceId, traceIdFromHeader);
+            return userRepository.list();
+        });
 
+    }
 
     /***********************************Request Channel******************************/
     @MessageMapping("request.channel")
-    public Flux<User> requestChannel(Flux<User> users) {
-        return users;
+    public Flux<User> requestChannel(Flux<User> users, @Header(TraceConstant.TRACE_ID) String traceIdFromHeader) {
+        return Flux.from(TraceContextHolder.getTraceId()).flatMap(traceId -> {
+            log.info("traceId from context is {}, traceId from header is {}", traceId, traceIdFromHeader);
+            return users;
+        });
     }
 
     /***********************************Invoke Error******************************/
 
     @MessageMapping("user.error")
-    public Mono<User> invokeError() {
-        throw new IllegalArgumentException();
+    public Mono<User> invokeError(@Header(TraceConstant.TRACE_ID) String traceIdFromHeader) {
+        return TraceContextHolder.getTraceId().flatMap(traceId -> {
+            log.info("traceId from context is {}, traceId from header is {}", traceId, traceIdFromHeader);
+            throw new IllegalArgumentException();
+        });
     }
 
     @MessageExceptionHandler
     public Mono<User> handleException(Exception e) {
-        log.error(e.getMessage());
+        log.error("Catch error, message : {}", e.getMessage());
         return Mono.just(User.builder().id(-1).build());
     }
 
@@ -155,7 +172,7 @@ public class UserController {
     }
 
     /***********************************ConnectMapping******************************/
-    private static final Map<String, RSocketRequester> REQUESTER_MAP = new HashMap<>();
+    private static final Map<String, RSocketRequester> REQUESTER_MAP = new ConcurrentHashMap<>();
 
     /**
      * Matches all connects without route.
@@ -226,15 +243,19 @@ public class UserController {
     @MessageMapping("requester.responder")
     public Mono<String> requestCallback(RSocketRequester rSocketRequester,
                                         @Header String securityToken,
-                                        UserRequest userRequest) {
-        return userRepository.getOne(userRequest.getId()).flatMap(user -> {
-            log.info("Your(" + user.getName() + ") securityToken is '" + securityToken + "'");
-            return rSocketRequester.route("client.responder.user")
-                    .metadata(securityToken, SECURITY_TOKEN_MIME_TYPE)
-                    .data(User.builder().id(1).age(12).name("coco").build())
-                    .retrieveMono(String.class);
+                                        UserRequest userRequest,
+                                        @Header(TraceConstant.TRACE_ID) String traceIdFromHeader) {
+        return TraceContextHolder.getTraceId().flatMap(traceId -> {
+            log.info("traceId from context is {}, traceId from header is {}", traceId, traceIdFromHeader);
+            return userRepository.getOne(userRequest.getId()).flatMap(user -> {
+                log.info("Your(" + user.getName() + ") securityToken is '" + securityToken + "'");
+                return rSocketRequester.route("client.responder.user")
+                        .metadata(securityToken, SECURITY_TOKEN_MIME_TYPE)
+                        .metadata(traceId, TRACE_ID_MIME_TYPE)
+                        .data(User.builder().id(1).age(12).name("coco").build())
+                        .retrieveMono(String.class);
+            });
         });
     }
-
 
 }

@@ -1,7 +1,9 @@
-package com.shf.rsocket.log.entity;
+package com.shf.rsocket.entity;
 
 import io.rsocket.Payload;
 import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.util.Map;
@@ -15,7 +17,8 @@ import java.util.Map;
  */
 @AllArgsConstructor
 @NoArgsConstructor
-public class LogInfo {
+@Data
+public class PayloadInfo {
 
     /**
      * payload data
@@ -25,4 +28,14 @@ public class LogInfo {
      * payload metadata
      */
     private Map<String, Object> metadata;
+
+    public PayloadInfo withData(String data) {
+        this.data = data;
+        return this;
+    }
+
+    public PayloadInfo withMetadata(Map<String, Object> metadata) {
+        this.metadata = metadata;
+        return this;
+    }
 }

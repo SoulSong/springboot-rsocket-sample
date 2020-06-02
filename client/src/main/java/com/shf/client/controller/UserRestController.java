@@ -29,6 +29,7 @@ import static com.shf.rsocket.mimetype.MimeTypes.MAP_MIME_TYPE;
 import static com.shf.rsocket.mimetype.MimeTypes.PARAMETERIZED_TYPE_MIME_TYPE;
 import static com.shf.rsocket.mimetype.MimeTypes.REFRESH_TOKEN_MIME_TYPE;
 import static com.shf.rsocket.mimetype.MimeTypes.SECURITY_TOKEN_MIME_TYPE;
+import static com.shf.rsocket.mimetype.MimeTypes.TRACE_ID_MIME_TYPE;
 
 /**
  * Description:
@@ -66,10 +67,18 @@ public class UserRestController {
      */
     @GetMapping(value = "{id}")
     public Publisher<User> user(@PathVariable("id") int id) {
-        return rSocketRequester1
-                .route("user")
-                .data(new UserRequest(id))
-                .retrieveMono(User.class);
+        if (id == 1) {
+            return rSocketRequester1
+                    .route("user")
+                    .metadata("TRACE_ID_" + id, TRACE_ID_MIME_TYPE)
+                    .data(new UserRequest(id))
+                    .retrieveMono(User.class);
+        } else {
+            return rSocketRequester1
+                    .route("user")
+                    .data(new UserRequest(id))
+                    .retrieveMono(User.class);
+        }
     }
 
     /***********************************Fire And Forget******************************/
@@ -84,6 +93,7 @@ public class UserRestController {
     public Publisher<Void> add() {
         return rSocketRequester1
                 .route("add.user")
+                .metadata("TRACE_ID_SAMPLE", TRACE_ID_MIME_TYPE)
                 .data(User.builder().id(4).age(12).name("ball").build())
                 .send();
     }
@@ -102,6 +112,7 @@ public class UserRestController {
     public Publisher<User> list() {
         return rSocketRequester1
                 .route("list")
+                .metadata("TRACE_ID_SAMPLE", TRACE_ID_MIME_TYPE)
                 .retrieveFlux(User.class);
     }
 
@@ -116,6 +127,7 @@ public class UserRestController {
     public Publisher<User> requestChannel() {
         return rSocketRequester1
                 .route("request.channel")
+                .metadata("TRACE_ID_SAMPLE", TRACE_ID_MIME_TYPE)
                 .data(Flux.interval(Duration.ofSeconds(1))
                         .map(i -> User.builder().id(i.intValue() + 5).name("bob").age(11).build())
                         .take(10))
@@ -127,6 +139,7 @@ public class UserRestController {
     public Publisher<User> error() {
         return rSocketRequester1
                 .route("user.error")
+                .metadata("TRACE_ID_SAMPLE", TRACE_ID_MIME_TYPE)
                 .retrieveMono(User.class);
     }
 
@@ -222,6 +235,7 @@ public class UserRestController {
     public Publisher<String> replayRequester1() {
         return rSocketRequester1
                 .route("requester.responder")
+                .metadata("TRACE_ID_SAMPLE", TRACE_ID_MIME_TYPE)
                 .metadata("bearer token_001", SECURITY_TOKEN_MIME_TYPE)
                 .data(new UserRequest(1))
                 .retrieveMono(String.class);
@@ -231,6 +245,7 @@ public class UserRestController {
     public Publisher<String> replayRequester2() {
         return rSocketRequester2
                 .route("requester.responder")
+                .metadata("TRACE_ID_SAMPLE2", TRACE_ID_MIME_TYPE)
                 .metadata("bearer token_002", SECURITY_TOKEN_MIME_TYPE)
                 .data(new UserRequest(2))
                 .retrieveMono(String.class);

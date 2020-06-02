@@ -1,5 +1,6 @@
-package com.shf.rsocket.log;
+package com.shf.rsocket.interceptor.log;
 
+import com.shf.rsocket.interceptor.PayloadExtractFunction;
 import io.rsocket.plugins.InterceptorRegistry;
 import io.rsocket.plugins.RSocketInterceptor;
 import lombok.NonNull;
@@ -8,7 +9,8 @@ import org.springframework.messaging.rsocket.MetadataExtractor;
 
 /**
  * description :
- * Be used with {@link InterceptorRegistry#forResponder(RSocketInterceptor)}, log the payload and metadata for the responder or client-responder.
+ * Be used with {@link InterceptorRegistry#forResponder(RSocketInterceptor)},
+ * log the payload and metadata for the responder or client-responder.
  *
  * @author songhaifeng
  * @date 2020/5/20 23:28
@@ -16,8 +18,8 @@ import org.springframework.messaging.rsocket.MetadataExtractor;
 @Slf4j
 public class DefaultResponderLogInterceptor extends AbstractRSocketLogInterceptor {
 
-    public DefaultResponderLogInterceptor(@NonNull String appName, @NonNull MetadataExtractor metadataExtractor) {
-        super(appName, metadataExtractor);
+    public DefaultResponderLogInterceptor(@NonNull String appName, @NonNull PayloadExtractFunction payloadExtractFunction) {
+        super(appName, payloadExtractFunction);
     }
 
     /**
@@ -38,5 +40,10 @@ public class DefaultResponderLogInterceptor extends AbstractRSocketLogIntercepto
     @Override
     String getResponsePrefix() {
         return getAppName() + SEND;
+    }
+
+    @Override
+    public int getOrder() {
+        return LOG_RESPONDER_PRECEDENCE;
     }
 }

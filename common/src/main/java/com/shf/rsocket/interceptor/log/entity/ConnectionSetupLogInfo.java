@@ -1,6 +1,7 @@
-package com.shf.rsocket.log.entity;
+package com.shf.rsocket.interceptor.log.entity;
 
 import com.shf.rsocket.entity.RSocketRole;
+import com.shf.rsocket.entity.PayloadInfo;
 import lombok.Builder;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -19,7 +20,7 @@ import java.util.Map;
 @Data
 @EqualsAndHashCode(callSuper = true)
 @Slf4j
-public class ConnectionSetupLogInfo extends LogInfo {
+public class ConnectionSetupLogInfo extends PayloadInfo {
 
     @Builder
     private ConnectionSetupLogInfo(String data, Map<String, Object> metadata) {

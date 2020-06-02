@@ -20,4 +20,8 @@ public interface MimeTypes {
     MimeType MAP_MIME_TYPE = MimeType.valueOf("application/vnd.map.metadata+json");
     MimeType FOO_MIME_TYPE = MimeType.valueOf("application/vnd.foo.metadata+json");
     MimeType PARAMETERIZED_TYPE_MIME_TYPE = MimeType.valueOf("application/vnd.foo.2.map.metadata+json");
+    /**
+     * mock trace
+     */
+    MimeType TRACE_ID_MIME_TYPE = MimeType.valueOf("message/x.rsocket.trace.id.v0");
 }
