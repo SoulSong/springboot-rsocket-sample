@@ -3,7 +3,9 @@ package com.shf.controller;
 import com.shf.entity.Foo;
 import com.shf.entity.User;
 
+import com.shf.rsocket.interceptor.trace.TraceConstant;
 import io.rsocket.metadata.WellKnownMimeType;
+import lombok.extern.slf4j.Slf4j;
 import org.reactivestreams.Publisher;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.messaging.rsocket.RSocketRequester;
@@ -13,11 +15,14 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import reactor.core.publisher.Mono;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 
 import static com.shf.rsocket.mimetype.MimeTypes.MAP_MIME_TYPE;
+import static com.shf.rsocket.mimetype.MimeTypes.TRACE_ID_MIME_TYPE;
 
 /**
  * Description:
@@ -27,6 +32,7 @@ import static com.shf.rsocket.mimetype.MimeTypes.MAP_MIME_TYPE;
  */
 @RestController
 @RequestMapping("/user")
+@Slf4j
 public class UserRestController {
 
     private final RSocketRequester rSocketRequester;
@@ -88,5 +94,20 @@ public class UserRestController {
                 .metadata(credentials, MimeTypeUtils.parseMimeType(WellKnownMimeType.MESSAGE_RSOCKET_AUTHENTICATION.getString()))
                 .data(User.builder().age(100).name("user_123").id(12).build())
                 .retrieveMono(User.class);
+    }
+
+    @GetMapping(value = "trace")
+    public Mono<String> trace() {
+        return Mono.deferWithContext(context -> {
+            String traceId = Objects.requireNonNull(context.getOrDefault(TraceConstant.TRACE_ID, TraceConstant.UNKNOWN));
+            log.info("TraceId is {}", traceId);
+
+            UsernamePasswordMetadata credentials = new UsernamePasswordMetadata("shf", "123456");
+            return rSocketRequester
+                    .route("user.trace")
+                    .metadata(traceId, TRACE_ID_MIME_TYPE)
+                    .metadata(credentials, MimeTypeUtils.parseMimeType(WellKnownMimeType.MESSAGE_RSOCKET_AUTHENTICATION.getString()))
+                    .retrieveMono(String.class);
+        });
     }
 }

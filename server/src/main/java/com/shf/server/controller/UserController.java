@@ -3,6 +3,7 @@ package com.shf.server.controller;
 import com.shf.entity.Foo;
 import com.shf.entity.User;
 import com.shf.entity.UserRequest;
+import com.shf.reactive.mdc.MdcContextLifterHook;
 import com.shf.rsocket.interceptor.trace.TraceConstant;
 import com.shf.rsocket.interceptor.trace.TraceContextHolder;
 import com.shf.server.repository.UserRepository;
@@ -40,6 +41,9 @@ public class UserController {
 
     @Autowired
     private UserRepository userRepository;
+
+    @Autowired
+    private MdcContextLifterHook mdcContextLifterHook;
 
     /***********************************request/response******************************/
     @MessageMapping("user")
@@ -256,6 +260,11 @@ public class UserController {
                         .retrieveMono(String.class);
             });
         });
+    }
+
+    @MessageMapping("user.trace")
+    public Mono<String> trace() {
+        return TraceContextHolder.getTraceId().flatMap(Mono::just);
     }
 
 }

@@ -1,17 +1,22 @@
 package com.shf.rsocket.interceptor.log;
 
+import com.shf.reactive.mdc.MdcReactiveUtils;
 import com.shf.rsocket.entity.PayloadInfo;
 import com.shf.rsocket.interceptor.PayloadExtractFunction;
 import com.shf.rsocket.interceptor.log.entity.RequestLogInfo;
 import com.shf.rsocket.interceptor.log.entity.ResponseLogInfo;
+import io.netty.util.ReferenceCountUtil;
 import io.rsocket.Payload;
 import io.rsocket.RSocket;
 import io.rsocket.util.RSocketProxy;
 import lombok.extern.slf4j.Slf4j;
 import org.reactivestreams.Publisher;
+import org.slf4j.MDC;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.publisher.SignalType;
+
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * description :
@@ -42,8 +47,16 @@ public class PayloadLogRSocket extends RSocketProxy {
      */
     @Override
     public Mono<Void> fireAndForget(Payload payload) {
-        return super.fireAndForget(payload)
-                .doFirst(() -> logRequest(payload));
+        long startTime = System.currentTimeMillis();
+        ReferenceCountUtil.retain(payload);
+        return Mono.subscriberContext()
+                .flatMap(context -> super.fireAndForget(payload)
+                        .doFirst(() -> logRequest(payload))
+                        .doOnError(throwable -> MdcReactiveUtils.mdcOnError(error -> {
+                            log.error(throwable.getMessage());
+                            logResponseStatus(SignalType.ON_ERROR, startTime);
+                        }, throwable, context))
+                        .doFinally(signalType -> ReferenceCountUtil.retain(payload)));
     }
 
     /**
@@ -55,8 +68,17 @@ public class PayloadLogRSocket extends RSocketProxy {
     @Override
     public Mono<Payload> requestResponse(final Payload payload) {
         long startTime = System.currentTimeMillis();
-        return logResponse(startTime, super.requestResponse(payload))
-                .doFirst(() -> logRequest(payload));
+        ReferenceCountUtil.retain(payload);
+        return Mono.subscriberContext()
+                .flatMap(context ->
+                        logResponse(startTime, super.requestResponse(payload)
+                                .doFirst(() -> logRequest(payload))
+                                .doOnError(throwable -> MdcReactiveUtils.mdcOnError(error -> {
+                                    log.error(throwable.getMessage());
+                                    logResponseStatus(SignalType.ON_ERROR, startTime);
+                                }, throwable, context))
+                                .doFinally(signalType -> ReferenceCountUtil.release(payload))));
+
     }
 
     /**
@@ -68,9 +90,25 @@ public class PayloadLogRSocket extends RSocketProxy {
     @Override
     public Flux<Payload> requestStream(Payload payload) {
         long startTime = System.currentTimeMillis();
-        return super.requestStream(payload)
-                .doFirst(() -> logRequest(payload))
-                .doFinally(signalType -> logResponseStatus(signalType, startTime));
+        final AtomicBoolean read = new AtomicBoolean(false);
+        ReferenceCountUtil.retain(payload);
+        return Flux.deferWithContext(context -> super.requestStream(payload)
+                .map(p -> {
+                    if (!read.get()) {
+                        read.set(true);
+                        logRequest(payload);
+                    }
+                    return p;
+                })
+                .doOnComplete(MdcReactiveUtils.mdcOnComplete(() -> {
+                    logResponseStatus(SignalType.ON_COMPLETE, startTime);
+                }, context))
+                .doOnError(throwable -> MdcReactiveUtils.mdcOnError(error -> {
+                    log.error(throwable.getMessage());
+                    logResponseStatus(SignalType.ON_ERROR, startTime);
+                }, throwable, context))
+                .doFinally(signalType -> ReferenceCountUtil.release(payload)));
+
     }
 
     /**
@@ -82,31 +120,27 @@ public class PayloadLogRSocket extends RSocketProxy {
     @Override
     public Flux<Payload> requestChannel(Publisher<Payload> payloads) {
         long startTime = System.currentTimeMillis();
-        return super.requestChannel(payloads)
-                .doFinally(signalType -> logResponseStatus(signalType, startTime));
-    }
-
-    /**
-     * log request and response status
-     *
-     * @param payload payload
-     * @return Mono<Void>
-     */
-    @Override
-    public Mono<Void> metadataPush(Payload payload) {
-        long startTime = System.currentTimeMillis();
-        return super.metadataPush(payload)
-                .doFirst(() -> logRequest(payload))
-                .doFinally(signalType -> logResponseStatus(signalType, startTime));
+        return Flux.deferWithContext(context -> super.requestChannel(payloads)
+                .doOnComplete(MdcReactiveUtils.mdcOnComplete(() -> {
+                    logResponseStatus(SignalType.ON_COMPLETE, startTime);
+                }, context))
+                .doOnError(throwable -> MdcReactiveUtils.mdcOnError(error -> {
+                    log.error(throwable.getMessage());
+                    logResponseStatus(SignalType.ON_ERROR, startTime);
+                }, throwable, context)));
     }
 
     /**
      * Log request payload.
      *
      * @param payload payload
-     * @return RequestLogInfo
      */
     private void logRequest(Payload payload) {
+        // Exception had been invoked before, like MissingLeaseException.
+        if (payload.refCnt() == 0) {
+            return;
+        }
+        MDC.getCopyOfContextMap();
         RequestLogInfo.RequestLogInfoBuilder builder = RequestLogInfo.builder();
         PayloadInfo payloadInfo = payloadExtractFunction.extract(payload, true, true);
         builder.data(payloadInfo.getData())
@@ -126,7 +160,9 @@ public class PayloadLogRSocket extends RSocketProxy {
             ResponseLogInfo.ResponseLogInfoBuilder builder = ResponseLogInfo.builder();
             builder.data(response.getDataUtf8()).spentTime(System.currentTimeMillis() - startTime);
             builder.build().log(responsePrefix);
-        }).doFinally(signalType -> logResponseStatus(signalType, startTime));
+        }).doOnEach(MdcReactiveUtils.mdcOnEach(s -> {
+            logResponseStatus(s.getType(), startTime);
+        }));
     }
 
     /**
@@ -138,4 +174,5 @@ public class PayloadLogRSocket extends RSocketProxy {
     private void logResponseStatus(SignalType signalType, long startTime) {
         log.info("[{}], responding status:[{}]; spentTime:[{}]ms", responsePrefix, signalType.toString(), System.currentTimeMillis() - startTime);
     }
+
 }

@@ -1,10 +1,14 @@
 package com.shf.entity.context;
 
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.collections4.CollectionUtils;
 import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
 
+import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * description :
@@ -15,7 +19,7 @@ import java.util.Map;
  */
 @Slf4j
 public class MetadataContextHolder {
-    public static final String METADATA_CONTEXT_KEY = "METADATA_CONTEXT";
+    public static final String METADATA_CONTEXT_KEY = MetadataContextHolder.class.getName();
 
     public static Mono<Map<String, Object>> getContext() {
         return Mono.subscriberContext()
@@ -24,6 +28,7 @@ public class MetadataContextHolder {
     }
 
     public static Context setContext(Map<String, Object> metadata) {
+        log.info("Load metadata into context.");
         return Context.of(METADATA_CONTEXT_KEY, metadata);
     }
 
@@ -36,4 +41,30 @@ public class MetadataContextHolder {
                 });
     }
 
+    /**
+     * Copy some special keys from {@link Context} into a {@link Map}.
+     *
+     * @param context    {@link Context}
+     * @param keysToCopy a set collection of keys which need to be copy.
+     * @return {@link Map}
+     */
+    public static Map<String, String> readFromContext(Context context, Set<String> keysToCopy) {
+        if (CollectionUtils.isEmpty(keysToCopy)) {
+            return new HashMap<>(1);
+        }
+        Map<String, String> map = context.stream()
+                .filter(entry -> keysToCopy.contains(entry.getKey().toString()) && null != entry.getValue())
+                .collect(Collectors.toMap(entry -> entry.getKey().toString(),
+                        entry -> entry.getValue().toString()));
+        // Read from metadata if there are still some keys not found.
+        if (map.size() < keysToCopy.size() && context.hasKey(MetadataContextHolder.METADATA_CONTEXT_KEY)) {
+            Map<String, Object> metadata = context.get(MetadataContextHolder.METADATA_CONTEXT_KEY);
+            metadata.forEach((key, value) -> {
+                if (keysToCopy.contains(key) && null != value) {
+                    map.put(key, value.toString());
+                }
+            });
+        }
+        return map;
+    }
 }

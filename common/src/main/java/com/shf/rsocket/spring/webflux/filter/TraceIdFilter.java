@@ -1,6 +1,5 @@
-package com.shf.web.filter;
+package com.shf.rsocket.spring.webflux.filter;
 
-import org.springframework.stereotype.Component;
 import org.springframework.web.server.ServerWebExchange;
 import org.springframework.web.server.WebFilter;
 import org.springframework.web.server.WebFilterChain;
@@ -15,7 +14,6 @@ import static com.shf.rsocket.interceptor.trace.TraceConstant.UNKNOWN;
  * @author songhaifeng
  * @date 2020/5/24 16:10
  */
-@Component
 public class TraceIdFilter implements WebFilter {
     @Override
     public Mono<Void> filter(ServerWebExchange serverWebExchange, WebFilterChain webFilterChain) {

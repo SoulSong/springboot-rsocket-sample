@@ -50,6 +50,9 @@ All interaction models defined in **RSocket**.
 - Graceful shutdown
 - Lease
 - Customize `RSocketInterceptor` and `SocketAcceptorInterceptor` for logging payload
+- Throughout the traceId
+- MDC enhance
+- Store metadata into Context in common way
 
 # Test Endpoints
 
@@ -199,3 +202,10 @@ $ curl http://127.0.0.1:8080/user/slow/handler
 ```
 We will find that, the first request could be answered normally. The third request will be refused. The `client-service` real shutdown gracefully.
 
+## Trace
+Pass the traceId throughout from client2->client->server. And add the traceId into MDC for logging.
+
+```text
+$ curl -H "traceId:123" http://localhost:8000/user/trace
+```
+Will see text[`traceId:123`] in all three consoles.

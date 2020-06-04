@@ -2,6 +2,7 @@ package com.shf.server.repository;
 
 import com.shf.entity.User;
 
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Repository;
 
 import java.time.Duration;
@@ -18,6 +19,7 @@ import reactor.core.publisher.Mono;
  * @date: 2019/11/18 14:57
  */
 @Repository
+@Slf4j
 public class UserRepository {
     private static final Map<Integer, User> USERS = new HashMap<>(3);
 
@@ -32,6 +34,7 @@ public class UserRepository {
     }
 
     public Mono<Boolean> add(User user) {
+        log.info("add a user : {}", user.toString());
         if (USERS.containsKey(user.getId())) {
             return Mono.just(Boolean.FALSE);
         }

@@ -3,11 +3,11 @@ package com.shf.configuration;
 import com.shf.rsocket.entity.RSocketRole;
 import com.shf.rsocket.interceptor.PayloadExtractFunction;
 import com.shf.rsocket.interceptor.log.DefaultConnectionSetUpLogInterceptor;
+import com.shf.rsocket.interceptor.log.DefaultRequesterLogInterceptor;
 import com.shf.rsocket.lease.LeaseReceiver;
 import com.shf.rsocket.lease.LeaseSender;
 import com.shf.rsocket.lease.NoopStats;
 import com.shf.rsocket.lease.ServerRoleEnum;
-import com.shf.rsocket.interceptor.log.DefaultRequesterLogInterceptor;
 import com.shf.rsocket.spring.PayloadHandler;
 import io.rsocket.frame.decoder.PayloadDecoder;
 import io.rsocket.lease.Leases;
@@ -76,4 +76,5 @@ public class RSocketClientConfiguration {
     public RSocketStrategiesCustomizer authenticationStrategyCustomizer() {
         return (strategyBuilder) -> strategyBuilder.encoder(new SimpleAuthenticationEncoder());
     }
+
 }

@@ -1,5 +1,6 @@
 package com.shf.client.controller;
 
+import com.shf.rsocket.interceptor.trace.TraceContextHolder;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.messaging.handler.annotation.DestinationVariable;
 import org.springframework.messaging.handler.annotation.Header;
@@ -19,6 +20,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
+import static com.shf.rsocket.mimetype.MimeTypes.TRACE_ID_MIME_TYPE;
+
 /**
  * Description:
  * Mock as a rSocket server.
@@ -29,6 +32,11 @@ import java.util.concurrent.ConcurrentHashMap;
 @Controller
 @Slf4j
 public class UserController {
+    private final RSocketRequester rSocketRequester1;
+
+    public UserController(RSocketRequester rSocketRequester1) {
+        this.rSocketRequester1 = rSocketRequester1;
+    }
 
     /***********************************request/response******************************/
     /**
@@ -58,6 +66,16 @@ public class UserController {
                     // read from security-context
                     return com.shf.entity.User.builder().id(id).age(user.getAge()).name(user.getName()).build();
                 });
+    }
+
+    @MessageMapping("user.trace")
+    public Mono<String> trace() {
+        return TraceContextHolder.getTraceId().flatMap(traceId -> {
+            return rSocketRequester1
+                    .route("user.trace")
+                    .metadata(traceId, TRACE_ID_MIME_TYPE)
+                    .retrieveMono(String.class);
+        });
     }
 
     /***********************************ConnectMapping******************************/
