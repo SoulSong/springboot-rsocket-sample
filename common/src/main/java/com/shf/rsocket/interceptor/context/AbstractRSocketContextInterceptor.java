@@ -72,7 +72,7 @@ public abstract class AbstractRSocketContextInterceptor implements RSocketContex
                 return Flux.from(payloads)
                         .switchOnFirst((signal, innerFlux) -> {
                             Payload firstPayload = signal.get();
-                            return firstPayload == null ? innerFlux :
+                            return firstPayload == null ? super.requestChannel(payloads) :
                                     handleAndReply(innerFlux, firstPayload);
                         });
             }
