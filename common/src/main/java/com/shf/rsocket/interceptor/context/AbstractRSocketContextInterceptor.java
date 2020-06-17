@@ -77,11 +77,6 @@ public abstract class AbstractRSocketContextInterceptor implements RSocketContex
                         });
             }
 
-            @Override
-            public Mono<Void> metadataPush(Payload payload) {
-                return handle(super.metadataPush(payload), payload);
-            }
-
             private Mono<Void> handle(Mono<Void> mono, Payload payload) {
                 return mono
                         .subscriberContext(context -> MetadataContextHolder.setContext(PayloadUtils.extractMetadata(payloadExtractFunction, payload)))
