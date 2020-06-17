@@ -7,6 +7,7 @@ import com.shf.rsocket.interceptor.context.DefaultResponderContextInterceptor;
 import com.shf.rsocket.interceptor.log.DefaultConnectionSetUpLogInterceptor;
 import com.shf.rsocket.interceptor.log.DefaultRequesterLogInterceptor;
 import com.shf.rsocket.interceptor.log.DefaultResponderLogInterceptor;
+import com.shf.rsocket.interceptor.metadata.DefaultMetadataPushReceiveInterceptor;
 import com.shf.rsocket.interceptor.trace.TraceConstant;
 import com.shf.rsocket.spring.PayloadHandler;
 import io.rsocket.core.Resume;
@@ -122,6 +123,7 @@ public class RSocketServerConfiguration {
                                 interceptorRegistry.forResponder(new DefaultResponderLogInterceptor(appName, payloadExtractFunction)))
                         .interceptors(interceptorRegistry ->
                                 interceptorRegistry.forResponder(new DefaultResponderContextInterceptor(payloadExtractFunction)))
+                        .interceptors(interceptorRegistry -> interceptorRegistry.forResponder(new DefaultMetadataPushReceiveInterceptor()))
                         // sort must be set after the register operation.
                         .interceptors(interceptorRegistry -> interceptorRegistry.forResponder(list -> {
                             list.sort(DEFAULT_INTERCEPTOR_SORT);

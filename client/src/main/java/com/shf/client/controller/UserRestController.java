@@ -5,24 +5,26 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.shf.entity.Foo;
 import com.shf.entity.User;
 import com.shf.entity.UserRequest;
-
+import io.netty.buffer.ByteBufUtil;
+import io.netty.buffer.Unpooled;
+import io.rsocket.util.ByteBufPayload;
 import lombok.extern.slf4j.Slf4j;
 import org.reactivestreams.Publisher;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.core.io.buffer.NettyDataBufferFactory;
 import org.springframework.http.MediaType;
 import org.springframework.messaging.rsocket.RSocketRequester;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 
 import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;
-
-import reactor.core.publisher.Flux;
-import reactor.core.publisher.Mono;
 
 import static com.shf.rsocket.mimetype.MimeTypes.FOO_MIME_TYPE;
 import static com.shf.rsocket.mimetype.MimeTypes.MAP_MIME_TYPE;
@@ -132,6 +134,24 @@ public class UserRestController {
                         .map(i -> User.builder().id(i.intValue() + 5).name("bob").age(11).build())
                         .take(10))
                 .retrieveFlux(User.class);
+    }
+
+    /***********************************Metadata Push******************************/
+
+    /**
+     * In production, we could send a json as metadata.
+     * We can encode string to {@link io.netty.buffer.ByteBuf} or {@link org.springframework.core.io.buffer.DataBuffer} or {@link java.nio.ByteBuffer} or {@link io.rsocket.Payload} by
+     * {@link ByteBufUtil} and {@link org.springframework.messaging.rsocket.PayloadUtils} and {@link NettyDataBufferFactory}.
+     *
+     * @return User
+     * @see org.springframework.messaging.rsocket.PayloadUtils
+     * @see org.springframework.core.io.buffer.NettyDataBufferFactory
+     * @see ByteBufUtil
+     */
+    @GetMapping(value = "metadata/push", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    public Mono<Void> metadataPush() {
+        return rSocketRequester1.rsocket()
+                .metadataPush(ByteBufPayload.create(Unpooled.EMPTY_BUFFER, Unpooled.wrappedBuffer("metadata update".getBytes())));
     }
 
     /***********************************Invoke Error******************************/
