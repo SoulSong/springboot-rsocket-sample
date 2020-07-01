@@ -47,16 +47,19 @@ public class PayloadLogRSocket extends RSocketProxy {
      */
     @Override
     public Mono<Void> fireAndForget(Payload payload) {
-        long startTime = System.currentTimeMillis();
-        ReferenceCountUtil.retain(payload);
         return Mono.subscriberContext()
-                .flatMap(context -> super.fireAndForget(payload)
-                        .doFirst(() -> logRequest(payload))
-                        .doOnError(throwable -> MdcReactiveUtils.mdcOnError(error -> {
-                            log.error(throwable.getMessage());
-                            logResponseStatus(SignalType.ON_ERROR, startTime);
-                        }, throwable, context))
-                        .doFinally(signalType -> ReferenceCountUtil.retain(payload)));
+                .flatMap(context -> {
+                            long startTime = System.currentTimeMillis();
+                            ReferenceCountUtil.retain(payload);
+                            return super.fireAndForget(payload)
+                                    .doFirst(() -> logRequest(payload))
+                                    .doOnError(throwable -> MdcReactiveUtils.mdcOnError(error -> {
+                                        log.error(throwable.getMessage());
+                                        logResponseStatus(SignalType.ON_ERROR, startTime);
+                                    }, throwable, context))
+                                    .doFinally(signalType -> ReferenceCountUtil.retain(payload));
+                        }
+                );
     }
 
     /**
@@ -67,18 +70,19 @@ public class PayloadLogRSocket extends RSocketProxy {
      */
     @Override
     public Mono<Payload> requestResponse(final Payload payload) {
-        long startTime = System.currentTimeMillis();
-        ReferenceCountUtil.retain(payload);
         return Mono.subscriberContext()
-                .flatMap(context ->
-                        logResponse(startTime, super.requestResponse(payload)
-                                .doFirst(() -> logRequest(payload))
-                                .doOnError(throwable -> MdcReactiveUtils.mdcOnError(error -> {
-                                    log.error(throwable.getMessage());
-                                    logResponseStatus(SignalType.ON_ERROR, startTime);
-                                }, throwable, context))
-                                .doFinally(signalType -> ReferenceCountUtil.release(payload))));
-
+                .flatMap(context -> {
+                            long startTime = System.currentTimeMillis();
+                            ReferenceCountUtil.retain(payload);
+                            return logResponse(startTime, super.requestResponse(payload)
+                                    .doFirst(() -> logRequest(payload))
+                                    .doOnError(throwable -> MdcReactiveUtils.mdcOnError(error -> {
+                                        log.error(throwable.getMessage());
+                                        logResponseStatus(SignalType.ON_ERROR, startTime);
+                                    }, throwable, context))
+                                    .doFinally(signalType -> ReferenceCountUtil.release(payload)));
+                        }
+                );
     }
 
     /**
@@ -89,25 +93,28 @@ public class PayloadLogRSocket extends RSocketProxy {
      */
     @Override
     public Flux<Payload> requestStream(Payload payload) {
-        long startTime = System.currentTimeMillis();
-        final AtomicBoolean read = new AtomicBoolean(false);
-        ReferenceCountUtil.retain(payload);
-        return Flux.deferWithContext(context -> super.requestStream(payload)
-                .map(p -> {
-                    if (!read.get()) {
-                        read.set(true);
-                        logRequest(payload);
-                    }
-                    return p;
-                })
-                .doOnComplete(MdcReactiveUtils.mdcOnComplete(() -> {
-                    logResponseStatus(SignalType.ON_COMPLETE, startTime);
-                }, context))
-                .doOnError(throwable -> MdcReactiveUtils.mdcOnError(error -> {
-                    log.error(throwable.getMessage());
-                    logResponseStatus(SignalType.ON_ERROR, startTime);
-                }, throwable, context))
-                .doFinally(signalType -> ReferenceCountUtil.release(payload)));
+        return Flux.deferWithContext(context -> {
+                    long startTime = System.currentTimeMillis();
+                    final AtomicBoolean read = new AtomicBoolean(false);
+                    ReferenceCountUtil.retain(payload);
+                    return super.requestStream(payload)
+                            .map(p -> {
+                                if (!read.get()) {
+                                    read.set(true);
+                                    logRequest(payload);
+                                }
+                                return p;
+                            })
+                            .doOnComplete(MdcReactiveUtils.mdcOnComplete(() -> {
+                                logResponseStatus(SignalType.ON_COMPLETE, startTime);
+                            }, context))
+                            .doOnError(throwable -> MdcReactiveUtils.mdcOnError(error -> {
+                                log.error(throwable.getMessage());
+                                logResponseStatus(SignalType.ON_ERROR, startTime);
+                            }, throwable, context))
+                            .doFinally(signalType -> ReferenceCountUtil.release(payload));
+                }
+        );
 
     }
 
@@ -119,15 +126,18 @@ public class PayloadLogRSocket extends RSocketProxy {
      */
     @Override
     public Flux<Payload> requestChannel(Publisher<Payload> payloads) {
-        long startTime = System.currentTimeMillis();
-        return Flux.deferWithContext(context -> super.requestChannel(payloads)
-                .doOnComplete(MdcReactiveUtils.mdcOnComplete(() -> {
-                    logResponseStatus(SignalType.ON_COMPLETE, startTime);
-                }, context))
-                .doOnError(throwable -> MdcReactiveUtils.mdcOnError(error -> {
-                    log.error(throwable.getMessage());
-                    logResponseStatus(SignalType.ON_ERROR, startTime);
-                }, throwable, context)));
+        return Flux.deferWithContext(context -> {
+                    long startTime = System.currentTimeMillis();
+                    return super.requestChannel(payloads)
+                            .doOnComplete(MdcReactiveUtils.mdcOnComplete(() -> {
+                                logResponseStatus(SignalType.ON_COMPLETE, startTime);
+                            }, context))
+                            .doOnError(throwable -> MdcReactiveUtils.mdcOnError(error -> {
+                                log.error(throwable.getMessage());
+                                logResponseStatus(SignalType.ON_ERROR, startTime);
+                            }, throwable, context));
+                }
+        );
     }
 
     /**
