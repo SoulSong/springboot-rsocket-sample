@@ -33,6 +33,11 @@
             <artifactId>spring-security-rsocket</artifactId>
         </dependency>
 
+        <dependency>
+            <groupId>io.springfox</groupId>
+            <artifactId>springfox-boot-starter</artifactId>
+        </dependency>
+
     </dependencies>
 
     <build>

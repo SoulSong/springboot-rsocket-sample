@@ -5,6 +5,7 @@ import com.shf.entity.User;
 
 import com.shf.rsocket.interceptor.trace.TraceConstant;
 import io.rsocket.metadata.WellKnownMimeType;
+import io.swagger.annotations.Api;
 import lombok.extern.slf4j.Slf4j;
 import org.reactivestreams.Publisher;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -33,6 +34,7 @@ import static com.shf.rsocket.mimetype.MimeTypes.TRACE_ID_MIME_TYPE;
 @RestController
 @RequestMapping("/user")
 @Slf4j
+@Api
 public class UserRestController {
 
     private final RSocketRequester rSocketRequester;

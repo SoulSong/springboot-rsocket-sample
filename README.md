@@ -209,3 +209,8 @@ Pass the traceId throughout from client2->client->server. And add the traceId in
 $ curl -H "traceId:123" http://localhost:8000/user/trace
 ```
 Will see text[`traceId:123`] in all three consoles.
+
+
+# Swagger Integrate
+Integrate the swagger3 in `client-service`. Forward to `http://localhost:8000/swagger-ui/` will show as follows:
+![avatar](./doc/img/swagger.png)
